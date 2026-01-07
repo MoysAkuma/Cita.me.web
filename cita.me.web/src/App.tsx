@@ -2,11 +2,20 @@ import React from 'react';
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { Navigate } from 'react-router-dom';
 import './App.css';
-import { AuthProvider } from './contexts/AuthContext';
+import { AuthProvider } from './contexts/AuthContext.tsx';
+import Home from './Pages/Home.tsx';
+import Search from './Pages/Search.tsx';
 
 function AppContent(): React.JSX.Element {
   
-  return (<></>);
+  return (
+    <>
+    <Routes>
+          <Route path="/" element={ <Home /> } />
+          <Route path="*" element={ <Navigate to="/" replace /> } />
+          <Route path="/search" element={ <Search /> } />
+        </Routes>
+    </>);
 }
 
 export default function App(): React.JSX.Element {
