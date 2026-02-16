@@ -32,7 +32,19 @@ export default function Home(): React.JSX.Element {
             >
                 Quiero encontrar un proveedor de servicios
             </Button>
+            
         </Box>
+        <Typography variant="body1" gutterBottom>
+            Solicitar cita de Hello Nails
+        </Typography>
+        <Button 
+            variant="contained" 
+            color="secondary"
+            component={Link} 
+            to="/provider"
+        >
+            Ver perfil de Hello Nails
+        </Button>
     </Container>
   );
 }

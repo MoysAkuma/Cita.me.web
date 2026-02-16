@@ -5,6 +5,7 @@ import './App.css';
 import { AuthProvider } from './contexts/AuthContext.tsx';
 import Home from './Pages/Home.tsx';
 import Search from './Pages/Search.tsx';
+import Profile from './Pages/Profile.tsx';
 
 function AppContent(): React.JSX.Element {
   
@@ -14,6 +15,7 @@ function AppContent(): React.JSX.Element {
           <Route path="/" element={ <Home /> } />
           <Route path="*" element={ <Navigate to="/" replace /> } />
           <Route path="/search" element={ <Search /> } />
+          <Route path="/provider" element={ <Profile /> } />
         </Routes>
     </>);
 }
