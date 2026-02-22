@@ -7,6 +7,7 @@ import {
 	Chip,
 	Container,
 	Divider,
+	duration,
 	Paper,
 	Stack,
 	Typography
@@ -19,17 +20,41 @@ const provider = {
 	city: 'Culiacan',
     state: 'Sinaloa',
     country : 'Mexico',
-	address: 'Pablo macias valenzuela 4465, Fraccionamiento Jardines del Valle',
+	address: 'Pablo macias valenzuela 4465, Fracc Jardines del Valle',
 	phone: '+52 667 270 0481',
 	email: 'fersh.cl17@gmail.com',
 	whatsapp: '+52 667 270 0481',
 	about:
 		'Atencion detallada y productos hipoalergenicos. Especialista en uñas acrilicas, Gelish, Pedicure & Spa.',
 	services: [
-		'Uñas acrilicas',
-		'Gelish',
-		'Pedicure',
-		'Spa'
+		{
+			name: 'Uñas acrilicas',
+			description: 'Uñas duraderas y personalizadas con diseños modernos.',
+			requestInfo: [
+				'Selecciona el diseño y tipo de uñas.'
+			],
+			warnings: ['Requiere mantenimiento cada 2-3 semanas.'],
+			duration: '2 horas',
+			price: '$500 MXN'
+		},
+		{
+			name: 'Gelish',
+			description: 'Aplicación de Gelish para un acabado duradero y brillante.',
+			duration: '1.5 horas',
+			price: '$400 MXN'
+		},
+		{
+			name: 'Pedicure',
+			description: 'Pedicure completo con exfoliación y masaje.',
+			duration: '1 hora',
+			price: '$300 MXN'
+		},
+		{
+			name: 'Spa',
+			description: 'Tratamientos de spa para relajación y bienestar.',
+			duration: '2 horas',
+			price: '$600 MXN'
+		}
 	],
 	languages: ['Espanol'],
 	schedule: [
@@ -52,7 +77,9 @@ const provider = {
 
 export default function Profile(): React.JSX.Element {
 	return (
-		<Container maxWidth="lg" style={{ paddingTop: '48px', paddingBottom: '64px' }}>
+		<Container 
+			maxWidth="lg" 
+			style={{ paddingTop: '48px', paddingBottom: '64px' }}>
 			<Paper
 				elevation={0}
 				style={{
@@ -61,9 +88,15 @@ export default function Profile(): React.JSX.Element {
 					background: 'linear-gradient(120deg, #ffe7c4 0%, #fff3dc 45%, #f7fbff 100%)'
 				}}
 			>
-				<Stack spacing={3} direction={{ xs: 'column', md: 'row' }} alignItems="center">
+				<Stack 
+					spacing={3} 
+					direction={{ xs: 'column', md: 'row' }} 
+					alignItems="center">
 					<Avatar
-						sx={{ width: 96, height: 96, bgcolor: '#ffb74d', color: '#3e2723', fontSize: '32px' }}
+						sx={{ width: 96, height: 96, 
+							bgcolor: '#ffb74d', 
+							color: '#3e2723', 
+							fontSize: '32px' }}
 					>
 						{provider.name
 							.split(' ')
@@ -88,7 +121,7 @@ export default function Profile(): React.JSX.Element {
 						</Stack>
 					</Box>
 					<Stack spacing={1.5} style={{ minWidth: '180px' }}>
-						<Button variant="contained" color="primary" size="large">
+						<Button variant="contained" color="primary" size="large" component={Link} to="/request-appointment">
 							Solicitar cita
 						</Button>
 						<Button variant="outlined" color="primary" component={Link} to="/search">
@@ -101,9 +134,11 @@ export default function Profile(): React.JSX.Element {
 			<Box mt={4} display="flex" flexDirection={{ xs: 'column', md: 'row' }} gap={3}>
 				<Paper elevation={0} style={{ flex: 1, padding: '24px', borderRadius: '18px' }}>
 					<Typography variant="h5" gutterBottom style={{ fontWeight: 700 }}>
-						Sobre el servicio
+						Acerca de {provider.name}
 					</Typography>
-					<Typography variant="body1" style={{ color: '#555', lineHeight: 1.7 }}>
+					<Typography 
+						variant="body1" 
+						style={{ color: '#555', lineHeight: 1.7 }}>
 						{provider.about}
 					</Typography>
 					<Divider style={{ margin: '24px 0' }} />
@@ -111,8 +146,8 @@ export default function Profile(): React.JSX.Element {
 						Servicios
 					</Typography>
 					<Stack direction="row" spacing={1} style={{ marginTop: '12px', flexWrap: 'wrap' }}>
-						{provider.services.map((service) => (
-							<Chip key={service} label={service} style={{ marginBottom: '8px' }} />
+						{provider.services.map(({ name }) => (
+							<Chip key={name} label={name} style={{ marginBottom: '8px' }} />
 						))}
 					</Stack>
 					<Divider style={{ margin: '24px 0' }} />
@@ -126,7 +161,7 @@ export default function Profile(): React.JSX.Element {
 					</Stack>
 					<Divider style={{ margin: '24px 0' }} />
 					<Typography variant="h6" style={{ fontWeight: 700 }}>
-						Disponibilidad semanal
+						Disponibilidad
 					</Typography>
 					<Stack spacing={1.5} style={{ marginTop: '16px' }}>
 						{provider.schedule.map((slot) => (
@@ -191,6 +226,8 @@ export default function Profile(): React.JSX.Element {
 						variant="contained"
 						color="primary"
 						fullWidth
+						component={Link}
+						to="/request-appointment"
 						style={{ marginTop: '24px' }}
 					>
 						Reservar ahora

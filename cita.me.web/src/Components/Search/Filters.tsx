@@ -10,7 +10,6 @@ import {
     IconButton, 
     Button,
     Box,
-    Grid,
     Divider
 } from "@mui/material";
 
@@ -96,8 +95,14 @@ export default function Filters(): React.JSX.Element {
                                 Ubicación
                             </Typography>
                         </Box>
-                        <Grid container spacing={2}>
-                            <Grid item xs={12}>
+                        <Box
+                            sx={{
+                                display: 'grid',
+                                gap: 2,
+                                gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr' }
+                            }}
+                        >
+                            <Box sx={{ gridColumn: { xs: 'auto', sm: '1 / -1' } }}>
                                 <TextField
                                     fullWidth
                                     variant="outlined"
@@ -107,8 +112,8 @@ export default function Filters(): React.JSX.Element {
                                     value={filters.country}
                                     onChange={(e) => handleFilterChange('country', e.target.value)}
                                 />
-                            </Grid>
-                            <Grid item xs={12} sm={6}>
+                            </Box>
+                            <Box>
                                 <TextField
                                     fullWidth
                                     variant="outlined"
@@ -118,8 +123,8 @@ export default function Filters(): React.JSX.Element {
                                     value={filters.state}
                                     onChange={(e) => handleFilterChange('state', e.target.value)}
                                 />
-                            </Grid>
-                            <Grid item xs={12} sm={6}>
+                            </Box>
+                            <Box>
                                 <TextField
                                     fullWidth
                                     variant="outlined"
@@ -129,8 +134,8 @@ export default function Filters(): React.JSX.Element {
                                     value={filters.city}
                                     onChange={(e) => handleFilterChange('city', e.target.value)}
                                 />
-                            </Grid>
-                        </Grid>
+                            </Box>
+                        </Box>
                     </Box>
 
                     <Divider sx={{ my: 2 }} />
