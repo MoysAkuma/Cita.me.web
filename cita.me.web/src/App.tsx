@@ -8,7 +8,9 @@ import Home from './Pages/Home.tsx';
 import Search from './Pages/Search.tsx';
 import Profile from './Pages/Profile.tsx';
 import RequestAppointment from './Pages/RequestAppointment.tsx';
+import Appointments from './Pages/Appointments.tsx';
 import Login from './Pages/Login.tsx';
+import ProviderOnboarding from './Pages/ProviderOnboarding.tsx';
 
 const appTheme = createTheme({
   palette: {
@@ -54,7 +56,9 @@ function AppContent(): React.JSX.Element {
           <Route path="/search" element={ <Search /> } />
           <Route path="/provider" element={ <Profile /> } />
           <Route path="/request-appointment" element={ <RequestAppointment /> } />
+          <Route path="/appointments" element={ <Appointments /> } />
           <Route path="/login" element={ <Login /> } />
+          <Route path="/provider-onboarding" element={ <ProviderOnboarding /> } />
         </Routes>
     </>);
 }
@@ -91,8 +95,9 @@ export default function App(): React.JSX.Element {
                   Cita.me
                 </Typography>
                 <Box sx={{ display: 'flex', gap: { xs: 0.5, sm: 1 } }}>
-                  <Button component={Link} to="/request-appointment" color="inherit">Citas</Button>
+                  <Button component={Link} to="/appointments" color="inherit">Citas</Button>
                   <Button component={Link} to="/search" color="inherit">Proveedores</Button>
+                  <Button component={Link} to="/provider-onboarding" color="inherit">Onboarding</Button>
                   <Button component={Link} to="/login" variant="contained" size="small">Login</Button>
                 </Box>
               </Toolbar>

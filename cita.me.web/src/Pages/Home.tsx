@@ -39,6 +39,9 @@ export default function Home(): React.JSX.Element {
                     <Button variant="text" size="large" component={Link} to="/request-appointment">
                         Solicitar cita ahora
                     </Button>
+                    <Button variant="outlined" size="large" component={Link} to="/provider-onboarding">
+                        Registrar mi negocio
+                    </Button>
                 </Stack>
 
                 <Stack direction={{ xs: 'column', md: 'row' }} spacing={2}>

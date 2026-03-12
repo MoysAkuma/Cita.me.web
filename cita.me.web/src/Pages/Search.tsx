@@ -12,35 +12,15 @@ import {
     Stack,
     Paper
 } from '@mui/material';
+import { getSiteProviders } from '../data/providers.ts';
 
-const providers = [
-    {
-        id: 'hello-nails',
-        name: 'Hello Nails',
-        location: 'Culiacan, Sinaloa',
-        service: 'Uñas acrilicas, Gelish, Pedicure & Spa',
-        rating: '5.0',
-        nextAvailable: 'Hoy 4:00 PM'
-    },
-    {
-        id: 'studio-bella',
-        name: 'Studio Bella',
-        location: 'Culiacan, Sinaloa',
-        service: 'Manicure, Pedicure, Spa de manos',
-        rating: '4.8',
-        nextAvailable: 'Mañana 10:30 AM'
-    },
-    {
-        id: 'nails-lounge',
-        name: 'Nails Lounge',
-        location: 'Culiacan, Sinaloa',
-        service: 'Gel, diseño premium, retiro',
-        rating: '4.9',
-        nextAvailable: 'Sábado 1:00 PM'
-    }
-];
+function getNextAvailableLabel(openingTime: string): string {
+    return `Desde hoy ${openingTime}`;
+}
 
 export default function Search(): React.JSX.Element {
+    const providers = React.useMemo(() => getSiteProviders(), []);
+
   return (
         <Container maxWidth="lg" sx={{ py: { xs: 3, md: 6 } }}>
             <Typography variant="h4" gutterBottom>
@@ -68,11 +48,13 @@ export default function Search(): React.JSX.Element {
                                 <Stack spacing={1.2}>
                                     <Box display="flex" justifyContent="space-between" alignItems="center" gap={1}>
                                         <Typography variant="h6">{provider.name}</Typography>
-                                        <Chip size="small" label={`⭐ ${provider.rating}`} color="primary" />
+                                        <Chip size="small" label={provider.serviceCategory} color="primary" />
                                     </Box>
-                                    <Typography variant="body2" color="text.secondary">{provider.service}</Typography>
-                                    <Typography variant="body2" color="text.secondary">{provider.location}</Typography>
-                                    <Chip size="small" label={`Disponible: ${provider.nextAvailable}`} sx={{ width: 'fit-content' }} />
+                                    <Typography variant="body2" color="text.secondary">
+                                      {provider.services.map((service) => service.name).join(', ')}
+                                    </Typography>
+                                    <Typography variant="body2" color="text.secondary">{provider.city}, {provider.state}</Typography>
+                                    <Chip size="small" label={`Disponible: ${getNextAvailableLabel(provider.schedule.openingTime)}`} sx={{ width: 'fit-content' }} />
                                     <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1.2} sx={{ pt: 1 }}>
                                         <Button component={Link} to="/provider" variant="outlined" fullWidth>
                                             Ver perfil
