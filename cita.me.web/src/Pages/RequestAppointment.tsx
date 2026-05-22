@@ -12,8 +12,8 @@ import {
   TextField,
   Typography
 } from '@mui/material';
-import { useAuth } from '../contexts/AuthContext.tsx';
-import { getSiteProviders, ProviderProfile } from '../data/providers.ts';
+import { useAuth } from '../contexts/AuthContext';
+import { getSiteProviders, ProviderProfile } from '../data/providers';
 
 type Appointment = {
   id: string;

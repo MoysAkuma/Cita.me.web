@@ -12,7 +12,7 @@ import {
   Stack,
   Typography
 } from '@mui/material';
-import { useAuth } from '../contexts/AuthContext.tsx';
+import { useAuth } from '../contexts/AuthContext';
 
 type Appointment = {
   id: string;
