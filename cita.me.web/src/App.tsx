@@ -2,15 +2,16 @@ import React from 'react';
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { Link, Navigate } from 'react-router-dom';
 import { AppBar, Box, Button, CssBaseline, ThemeProvider, Toolbar, Typography, createTheme } from '@mui/material';
+import { AuthProvider } from './contexts/AuthContext';
+import Home from './Pages/Home';
+import Search from './Pages/Search';
+import Profile from './Pages/Profile';
+import RequestAppointment from './Pages/RequestAppointment';
+import Appointments from './Pages/Appointments';
+import Login from './Pages/Login';
+import ProviderOnboarding from './Pages/ProviderOnboarding';
+import UserRegister from './Pages/UserRegister';
 import './App.css';
-import { AuthProvider } from './contexts/AuthContext.tsx';
-import Home from './Pages/Home.tsx';
-import Search from './Pages/Search.tsx';
-import Profile from './Pages/Profile.tsx';
-import RequestAppointment from './Pages/RequestAppointment.tsx';
-import Appointments from './Pages/Appointments.tsx';
-import Login from './Pages/Login.tsx';
-import ProviderOnboarding from './Pages/ProviderOnboarding.tsx';
 
 const appTheme = createTheme({
   palette: {
@@ -58,6 +59,7 @@ function AppContent(): React.JSX.Element {
           <Route path="/request-appointment" element={ <RequestAppointment /> } />
           <Route path="/appointments" element={ <Appointments /> } />
           <Route path="/login" element={ <Login /> } />
+          <Route path="/register" element={ <UserRegister /> } />
           <Route path="/provider-onboarding" element={ <ProviderOnboarding /> } />
         </Routes>
     </>);
@@ -98,6 +100,7 @@ export default function App(): React.JSX.Element {
                   <Button component={Link} to="/appointments" color="inherit">Citas</Button>
                   <Button component={Link} to="/search" color="inherit">Proveedores</Button>
                   <Button component={Link} to="/provider-onboarding" color="inherit">Onboarding</Button>
+                  <Button component={Link} to="/register" variant="outlined" size="small">Registrarse</Button>
                   <Button component={Link} to="/login" variant="contained" size="small">Login</Button>
                 </Box>
               </Toolbar>

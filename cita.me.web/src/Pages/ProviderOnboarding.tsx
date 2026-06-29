@@ -13,7 +13,7 @@ import {
   TextField,
   Typography
 } from '@mui/material';
-import { ProviderProfile, ServiceConfig, saveProviderProfile } from '../data/providers.ts';
+import { ProviderProfile, ServiceConfig, saveProviderProfile } from '../data/providers';
 
 type OnboardingService = {
   name: string;
@@ -235,10 +235,10 @@ export default function ProviderOnboarding(): React.JSX.Element {
         <Stack spacing={3} component="form" onSubmit={handleSubmit}>
           <Box>
             <Typography variant="h4" gutterBottom>
-              Onboarding de proveedor
+              Onboarding
             </Typography>
             <Typography variant="body1" color="text.secondary">
-              Crea un perfil público con categoría, servicios, horarios, precios y datos legales obligatorios.
+              Unete a Citame y administra tus citas de manera fácil y eficiente.
             </Typography>
           </Box>
 
@@ -261,7 +261,6 @@ export default function ProviderOnboarding(): React.JSX.Element {
           <Stack direction={{ xs: 'column', md: 'row' }} spacing={2}>
             <TextField label="Ciudad" value={form.city} onChange={updateForm('city')} fullWidth required />
             <TextField label="Estado" value={form.state} onChange={updateForm('state')} fullWidth required />
-            <TextField label="País" value={form.country} onChange={updateForm('country')} fullWidth required />
           </Stack>
 
           <TextField label="Dirección" value={form.address} onChange={updateForm('address')} fullWidth required />

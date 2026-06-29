@@ -1,6 +1,6 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
-import Filters from '../Components/Search/Filters.tsx';
+import Filters from '../Components/Search/Filters';
 import {
     Button,
     Typography,
@@ -12,7 +12,7 @@ import {
     Stack,
     Paper
 } from '@mui/material';
-import { getSiteProviders } from '../data/providers.ts';
+import { getSiteProviders } from '../data/providers';
 
 function getNextAvailableLabel(openingTime: string): string {
     return `Desde hoy ${openingTime}`;
