@@ -1,9 +1,9 @@
-import axios from 'axios';
+import axios, { AxiosError, InternalAxiosRequestConfig, AxiosResponse } from 'axios';
 
 // 1. Obtener la URL base desde las variables de entorno.
 // Si usas Vite es: import.meta.env.VITE_API_URL
 // Si usas Create React App (antiguo) es: process.env.REACT_APP_API_URL
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001';
+const API_BASE_URL: string = import.meta.env.VITE_API_URL || 'http://localhost:3001';
 
 // 2. Crear la instancia personalizada de Axios
 export const api = axios.create({
@@ -19,18 +19,18 @@ export const api = axios.create({
 // Se ejecuta ANTES de que la petición salga hacia el backend.
 // Ideal para inyectar tokens JWT de forma automática.
 api.interceptors.request.use(
-  (config) => {
+  (config: InternalAxiosRequestConfig): InternalAxiosRequestConfig => {
     // Buscamos el token en el almacenamiento local (o donde lo guardes)
     const token = localStorage.getItem('token'); 
     
-    if (token) {
+    if (token && config.headers) {
       // Si existe el token, lo añadimos a las cabeceras de autorización
       config.headers.Authorization = `Bearer ${token}`;
     }
     
     return config;
   },
-  (error) => {
+  (error: AxiosError): Promise<AxiosError> => {
     // Manejo de errores que ocurran antes de enviar la petición
     return Promise.reject(error);
   }
@@ -40,11 +40,11 @@ api.interceptors.request.use(
 // Se ejecuta CUANDO LA RESPUESTA LLEGA del servidor, antes de pasársela a tus hooks.
 // Ideal para capturar errores globales (como sesiones expiradas).
 api.interceptors.response.use(
-  (response) => {
+  (response: AxiosResponse): AxiosResponse => {
     // Si la respuesta es exitosa (status 2xx), la dejamos pasar tal cual
     return response;
   },
-  (error) => {
+  (error: AxiosError): Promise<AxiosError> => {
     // Si el servidor responde con un código de error (4xx, 5xx)
     if (error.response) {
       const { status } = error.response;

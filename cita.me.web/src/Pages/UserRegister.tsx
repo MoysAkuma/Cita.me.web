@@ -156,10 +156,10 @@ export default function UserRegister(): React.JSX.Element {
           <Stack spacing={3}>
             <Box>
               <Typography variant="h4" gutterBottom>
-                Registro de Usuario
+                Creación de cuenta
               </Typography>
               <Typography variant="body1" color="text.secondary">
-                Completa el formulario para crear tu cuenta
+                Completa el formulario para usar Citame y disfrutar de todas sus funcionalidades. Los campos marcados con * son obligatorios.
               </Typography>
             </Box>
 
