@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { registerUser } from '../../services/AuthService';
 
 export const useRegisterUser = () => {

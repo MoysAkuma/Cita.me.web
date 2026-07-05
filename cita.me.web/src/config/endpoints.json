@@ -1,0 +1,34 @@
+{
+  "auth": {
+    "login": "auth/login",
+    "register": "auth/register",
+    "logout": "auth/logout",
+    "refresh": "auth/refresh"
+  },
+  "users": {
+    "base": "/api/v1/users"
+  },
+  "proveedor": {
+    "base": "/proveedores",
+    "onboarding": "/proveedores/onboarding",
+    "sucursales": "/proveedores/:id/sucursales",
+    "empleados": "/proveedores/:id/empleados",
+    "servicios": "/proveedores/:id/servicios",
+    "horarios": "/proveedores/:id/horarios",
+    "citas": "/proveedores/:id/citas",
+    "documentacion": "/proveedores/:id/documentacion"
+  },
+  "appointments": {
+    "base": "/api/v1/appointments",
+    "create": "/api/v1/appointments/create",
+    "update": "/api/v1/appointments/update",
+    "delete": "/api/v1/appointments/delete"
+  },
+  "categorias": {
+    "proveedores": "/catalogues/categorias-proveedores",
+    "servicios": "/catalogues/categorias-servicios",
+    "ciudades": "/catalogues/ciudades",
+    "estados": "/catalogues/estados",
+    "status": "/catalogues/status"
+  }
+}
