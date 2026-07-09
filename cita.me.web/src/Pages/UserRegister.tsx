@@ -4,6 +4,7 @@ import {
   Alert,
   Box,
   Button,
+  CircularProgress,
   Container,
   MenuItem,
   Paper,
@@ -14,6 +15,7 @@ import {
   InputAdornment
 } from '@mui/material';
 import { Visibility, VisibilityOff } from '@mui/icons-material';
+import { useRegisterUser } from '../hooks/Auth/useRegisterUser';
 
 type UserRegistrationForm = {
   nombre: string;
@@ -39,6 +41,7 @@ const sexoOptions = [
 
 export default function UserRegister(): React.JSX.Element {
   const navigate = useNavigate();
+  const { loading, error: apiError, success, register } = useRegisterUser();
   const [form, setForm] = React.useState<UserRegistrationForm>({
     nombre: '',
     segundoNombre: '',
@@ -58,7 +61,12 @@ export default function UserRegister(): React.JSX.Element {
   const [showPassword, setShowPassword] = React.useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = React.useState(false);
   const [errorMessage, setErrorMessage] = React.useState('');
-  const [successMessage, setSuccessMessage] = React.useState('');
+
+  React.useEffect(() => {
+    if (success) {
+      setTimeout(() => navigate('/login'), 2000);
+    }
+  }, [success, navigate]);
 
   const updateForm = (field: keyof UserRegistrationForm) => 
     (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -123,22 +131,27 @@ export default function UserRegister(): React.JSX.Element {
   const handleSubmit = async (event: React.FormEvent) => {
     event.preventDefault();
     setErrorMessage('');
-    setSuccessMessage('');
 
     if (!validateForm()) {
       return;
     }
 
-    try {
-      // TODO: Implement API call to register user
-      setSuccessMessage('¡Usuario registrado exitosamente!');
-      setTimeout(() => {
-        navigate('/login');
-      }, 2000);
-    } catch (error) {
-      setErrorMessage('Error al registrar usuario. Por favor intenta nuevamente.');
-      console.error('Registration error:', error);
-    }
+    const payload = {
+      nombre: form.nombre,
+      segundo_nombre: form.segundoNombre,
+      apellido_paterno: form.apellidoPaterno,
+      apellido_materno: form.apellidoMaterno,
+      acerca_de_mi: form.acercaDeMi || undefined,
+      correo: form.correo,
+      contraseña: form.contraseña,
+      telefono: form.telefono || undefined,
+      telefono_whatsapp: form.telefonoWhatsapp || undefined,
+      fecha_nacimiento: form.fechaNacimiento || undefined,
+      sexo: form.sexo || undefined,
+      profile_photo_url: form.profilePhotoUrl || undefined,
+    };
+
+    await register(payload);
   };
 
   const handleClickShowPassword = () => {
@@ -168,9 +181,14 @@ export default function UserRegister(): React.JSX.Element {
                 {errorMessage}
               </Alert>
             )}
-            {successMessage && (
-              <Alert severity="success" onClose={() => setSuccessMessage('')}>
-                {successMessage}
+            {apiError && (
+              <Alert severity="error">
+                {apiError}
+              </Alert>
+            )}
+            {success && (
+              <Alert severity="success">
+                ¡Usuario registrado exitosamente! Redirigiendo al inicio de sesión...
               </Alert>
             )}
 
@@ -252,8 +270,7 @@ export default function UserRegister(): React.JSX.Element {
                 Información de Contacto
               </Typography>
               <Stack spacing={2}>
-                <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2}>
-                  <TextField
+                <TextField
                     label="Correo Electrónico *"
                     type="email"
                     fullWidth
@@ -261,6 +278,7 @@ export default function UserRegister(): React.JSX.Element {
                     onChange={updateForm('correo')}
                     inputProps={{ maxLength: 100 }}
                   />
+                <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2}>
                   <TextField
                     label="Teléfono"
                     type="tel"
@@ -269,8 +287,7 @@ export default function UserRegister(): React.JSX.Element {
                     onChange={updateForm('telefono')}
                     inputProps={{ maxLength: 20 }}
                   />
-                </Stack>
-                <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2}>
+
                   <TextField
                     label="Teléfono WhatsApp"
                     type="tel"
@@ -279,15 +296,8 @@ export default function UserRegister(): React.JSX.Element {
                     onChange={updateForm('telefonoWhatsapp')}
                     inputProps={{ maxLength: 20 }}
                   />
-                  <TextField
-                    label="URL Foto de Perfil"
-                    fullWidth
-                    value={form.profilePhotoUrl}
-                    onChange={updateForm('profilePhotoUrl')}
-                    inputProps={{ maxLength: 200 }}
-                    placeholder="https://ejemplo.com/foto.jpg"
-                  />
                 </Stack>
+                  
               </Stack>
             </Box>
 
@@ -348,8 +358,10 @@ export default function UserRegister(): React.JSX.Element {
                 type="submit"
                 fullWidth
                 size="large"
+                disabled={loading}
+                startIcon={loading ? <CircularProgress size={18} color="inherit" /> : undefined}
               >
-                Registrar Usuario
+                {loading ? 'Registrando...' : 'Registrar Usuario'}
               </Button>
               <Button
                 variant="outlined"

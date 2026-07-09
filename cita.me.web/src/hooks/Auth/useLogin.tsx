@@ -10,7 +10,10 @@ export const useLogin = () => {
     setError(null);
     setSuccess(false);
     try {
-      await loginUser(credentials);
+      const response = await loginUser(credentials);
+      const { accessToken, refreshToken } = response.data;
+      sessionStorage.setItem('accessToken', accessToken);
+      sessionStorage.setItem('refreshToken', refreshToken);
       setSuccess(true);
     } catch (err: any) {
       setError(err.message || 'Error logging in');

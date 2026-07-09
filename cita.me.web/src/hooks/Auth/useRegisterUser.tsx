@@ -6,12 +6,15 @@ export const useRegisterUser = () => {
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
 
-    const register = async (userData: any) => {
+  const register = async (userData: any) => {
     setLoading(true);
     setError(null);
     setSuccess(false);
     try {
-      await registerUser(userData);
+      const response = await registerUser(userData);
+      const { accessToken, refreshToken } = response.data;
+      sessionStorage.setItem('accessToken', accessToken);
+      sessionStorage.setItem('refreshToken', refreshToken);
       setSuccess(true);
     } catch (err: any) {
       setError(err.message || 'Error registering user');
