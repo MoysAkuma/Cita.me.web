@@ -20,8 +20,8 @@ export const api = axios.create({
 // Ideal para inyectar tokens JWT de forma automática.
 api.interceptors.request.use(
   (config: InternalAxiosRequestConfig): InternalAxiosRequestConfig => {
-    // Buscamos el token en el almacenamiento local (o donde lo guardes)
-    const token = localStorage.getItem('token'); 
+    // Buscamos el token en sessionStorage (donde se guarda después del login/registro)
+    const token = sessionStorage.getItem('accessToken'); 
     
     if (token && config.headers) {
       // Si existe el token, lo añadimos a las cabeceras de autorización
@@ -53,7 +53,9 @@ api.interceptors.response.use(
         // Ejemplo: El token expiró o es inválido. 
         // Aquí puedes borrar el token obsoleto y redirigir al login.
         console.warn('Sesión expirada o no autorizada. Limpiando datos...');
-        localStorage.removeItem('token');
+        sessionStorage.removeItem('accessToken');
+        sessionStorage.removeItem('refreshToken');
+        localStorage.removeItem('user');
         
         // Opcional: Redirigir al usuario (dependiendo de cómo manejes tus rutas)
         // window.location.href = '/login';

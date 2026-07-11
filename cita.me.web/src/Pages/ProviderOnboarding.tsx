@@ -14,6 +14,9 @@ import {
   Typography
 } from '@mui/material';
 import { ProviderProfile, ServiceConfig, saveProviderProfile } from '../data/providers';
+import { useCatProveedores } from '../hooks/Catalogues/useCatProveedores';
+import { useCatEstados } from '../hooks/Catalogues/useCatEstados';
+import { useCatCiudad } from '../hooks/Catalogues/useCatCiudad';
 
 type OnboardingService = {
   name: string;
@@ -72,6 +75,10 @@ function slugify(value: string): string {
 
 export default function ProviderOnboarding(): React.JSX.Element {
   const navigate = useNavigate();
+  const { getProveedores } = useCatProveedores();
+  const { getEstados } = useCatEstados();
+  const { getCiudades } = useCatCiudad();
+  const hasLoadedCatalogues = React.useRef(false);
   const [form, setForm] = React.useState<OnboardingForm>({
     providerName: '',
     serviceCategory: '',
@@ -95,6 +102,23 @@ export default function ProviderOnboarding(): React.JSX.Element {
   const [acceptPrivacy, setAcceptPrivacy] = React.useState(false);
   const [confirmCompliance, setConfirmCompliance] = React.useState(false);
   const [errorMessage, setErrorMessage] = React.useState('');
+
+  const loadCatalogues = React.useCallback(async () => {
+    try {
+      await Promise.all([getProveedores(), getEstados(), getCiudades()]);
+    } catch (error: any) {
+      setErrorMessage(error.message || 'No se pudieron cargar los catálogos iniciales.');
+    }
+  }, [getProveedores, getEstados, getCiudades]);
+
+  React.useEffect(() => {
+    if (hasLoadedCatalogues.current) {
+      return;
+    }
+
+    hasLoadedCatalogues.current = true;
+    void loadCatalogues();
+  }, [loadCatalogues]);
 
   const updateForm = (field: keyof OnboardingForm) => (event: React.ChangeEvent<HTMLInputElement>) => {
     setForm((current) => ({

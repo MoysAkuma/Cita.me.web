@@ -2,11 +2,11 @@ import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Alert, Box, Button, CircularProgress, Container, IconButton, InputAdornment, Paper, Stack, TextField, Typography } from '@mui/material';
 import { Visibility, VisibilityOff } from '@mui/icons-material';
-import { useLogin } from '../hooks/Auth/useLogin';
+import { useAuth } from '../contexts/AuthContext';
 
 export default function Login(): React.JSX.Element {
   const navigate = useNavigate();
-  const { loading, error, success, login } = useLogin();
+  const { login, isLoading, error, isAuthenticated } = useAuth();
 
   const [correo, setCorreo] = React.useState('');
   const [contraseña, setContraseña] = React.useState('');
@@ -14,8 +14,10 @@ export default function Login(): React.JSX.Element {
   const [validationError, setValidationError] = React.useState('');
 
   React.useEffect(() => {
-    if (success) navigate('/');
-  }, [success, navigate]);
+    if (isAuthenticated) {
+      navigate('/');
+    }
+  }, [isAuthenticated, navigate]);
 
   const handleSubmit = async (event: React.FormEvent) => {
     event.preventDefault();
@@ -35,7 +37,12 @@ export default function Login(): React.JSX.Element {
       return;
     }
 
-    await login({ correo, contraseña });
+    try {
+      await login(correo, contraseña);
+    } catch (err) {
+      // El error ya está manejado en el contexto
+      console.error('Error en login:', err);
+    }
   };
 
   return (
@@ -94,10 +101,10 @@ export default function Login(): React.JSX.Element {
               type="submit"
               fullWidth
               size="large"
-              disabled={loading}
-              startIcon={loading ? <CircularProgress size={18} color="inherit" /> : undefined}
+              disabled={isLoading}
+              startIcon={isLoading ? <CircularProgress size={18} color="inherit" /> : undefined}
             >
-              {loading ? 'Ingresando...' : 'Entrar'}
+              {isLoading ? 'Ingresando...' : 'Entrar'}
             </Button>
             <Button variant="text" fullWidth onClick={() => navigate('/register')}>
               ¿No tienes cuenta? Regístrate

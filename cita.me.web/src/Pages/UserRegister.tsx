@@ -15,7 +15,7 @@ import {
   InputAdornment
 } from '@mui/material';
 import { Visibility, VisibilityOff } from '@mui/icons-material';
-import { useRegisterUser } from '../hooks/Auth/useRegisterUser';
+import { useAuth } from '../contexts/AuthContext';
 
 type UserRegistrationForm = {
   nombre: string;
@@ -41,7 +41,8 @@ const sexoOptions = [
 
 export default function UserRegister(): React.JSX.Element {
   const navigate = useNavigate();
-  const { loading, error: apiError, success, register } = useRegisterUser();
+  const { register, isLoading, error: apiError } = useAuth();
+  const [success, setSuccess] = React.useState(false);
   const [form, setForm] = React.useState<UserRegistrationForm>({
     nombre: '',
     segundoNombre: '',
@@ -151,7 +152,12 @@ export default function UserRegister(): React.JSX.Element {
       profile_photo_url: form.profilePhotoUrl || undefined,
     };
 
-    await register(payload);
+    try {
+      await register(payload);
+      setSuccess(true);
+    } catch (error) {
+      // Error is already handled by AuthContext
+    }
   };
 
   const handleClickShowPassword = () => {
@@ -358,10 +364,10 @@ export default function UserRegister(): React.JSX.Element {
                 type="submit"
                 fullWidth
                 size="large"
-                disabled={loading}
-                startIcon={loading ? <CircularProgress size={18} color="inherit" /> : undefined}
+                disabled={isLoading}
+                startIcon={isLoading ? <CircularProgress size={18} color="inherit" /> : undefined}
               >
-                {loading ? 'Registrando...' : 'Registrar Usuario'}
+                {isLoading ? 'Registrando...' : 'Registrar Usuario'}
               </Button>
               <Button
                 variant="outlined"
