@@ -24,35 +24,36 @@ type OnboardingService = {
   durationValue: string;
   price: string;
   description: string;
+  es_destacado?: boolean;
+};
+
+type LegalOnboardingInfo = {
+  razon_social: string;
+  representante_legal: string;
+  rfc: string;
+};
+
+type CatalogueOption = {
+  value: number;
+  label: string;
 };
 
 type OnboardingForm = {
-  providerName: string;
-  serviceCategory: string;
-  about: string;
-  city: string;
-  state: string;
-  country: string;
-  address: string;
-  phone: string;
-  email: string;
+  nombre_comercial: string;
+  categoria: number;
+  descripcion: string;
+  ciudad: number;
+  estado: number;
+  direccion: string;
+  telefono: string;
+  correo: string;
   whatsapp: string;
-  openingTime: string;
-  closingTime: string;
-  taxId: string;
-  legalBusinessName: string;
-  legalRepresentative: string;
+  dias_descanso: number[];
+  hora_apertura: string;
+  hora_cierre: string;
+  servicios : OnboardingService[];
+  datos_legales: LegalOnboardingInfo;
 };
-
-const serviceCategories = [
-  'Uñas y belleza',
-  'Barbería',
-  'Spa y bienestar',
-  'Salón de belleza',
-  'Maquillaje profesional',
-  'Masajes terapéuticos',
-  'Otro'
-];
 
 const weekDays = ['lunes', 'martes', 'miércoles', 'jueves', 'viernes', 'sábado', 'domingo'];
 
@@ -80,21 +81,25 @@ export default function ProviderOnboarding(): React.JSX.Element {
   const { getCiudades } = useCatCiudad();
   const hasLoadedCatalogues = React.useRef(false);
   const [form, setForm] = React.useState<OnboardingForm>({
-    providerName: '',
-    serviceCategory: '',
-    about: '',
-    city: '',
-    state: '',
-    country: 'México',
-    address: '',
-    phone: '',
-    email: '',
+    nombre_comercial: '',
+    categoria: 0,
+    descripcion: '',
+    ciudad: 0,
+    estado: 0,
+    direccion: '',
+    telefono: '',
+    correo: '',
     whatsapp: '',
-    openingTime: '09:00',
-    closingTime: '18:00',
-    taxId: '',
-    legalBusinessName: '',
-    legalRepresentative: ''
+    hora_apertura: '09:00',
+    hora_cierre: '18:00',
+    datos_legales: {
+      rfc: '',
+      razon_social: '',
+      representante_legal: ''
+    },
+    servicios: [{ ...emptyService }],
+    dias_descanso: []
+
   });
   const [daysOff, setDaysOff] = React.useState<string[]>([]);
   const [services, setServices] = React.useState<OnboardingService[]>([{ ...emptyService }]);
@@ -102,14 +107,71 @@ export default function ProviderOnboarding(): React.JSX.Element {
   const [acceptPrivacy, setAcceptPrivacy] = React.useState(false);
   const [confirmCompliance, setConfirmCompliance] = React.useState(false);
   const [errorMessage, setErrorMessage] = React.useState('');
+  const [providerCategories, setProviderCategories] = React.useState<CatalogueOption[]>([]);
+  const [states, setStates] = React.useState<CatalogueOption[]>([]);
+  const [cities, setCities] = React.useState<CatalogueOption[]>([]);
+
+  const toCatalogueItems = React.useCallback((response: any): any[] => {
+    if (Array.isArray(response)) {
+      return response;
+    }
+
+    if (Array.isArray(response?.data)) {
+      return response.data;
+    }
+
+    if (Array.isArray(response?.items)) {
+      return response.items;
+    }
+
+    if (Array.isArray(response?.results)) {
+      return response.results;
+    }
+
+    return [];
+  }, []);
+
+  const toCatalogueOptions = React.useCallback(
+    (response: any): CatalogueOption[] =>
+      toCatalogueItems(response)
+        .map((item: any) => {
+          const rawValue = item?.id ?? item?.value;
+          const value = Number(rawValue);
+          const label =
+            item?.nombre ??
+            item?.name ??
+            item?.label ??
+            item?.text ??
+            item?.descripcion;
+
+          if (!Number.isFinite(value) || !label) {
+            return null;
+          }
+
+          return {
+            value,
+            label: String(label)
+          };
+        })
+        .filter((item: CatalogueOption | null): item is CatalogueOption => item !== null),
+    [toCatalogueItems]
+  );
 
   const loadCatalogues = React.useCallback(async () => {
     try {
-      await Promise.all([getProveedores(), getEstados(), getCiudades()]);
+      const [providersResponse, statesResponse, citiesResponse] = await Promise.all([
+        getProveedores(),
+        getEstados(),
+        getCiudades()
+      ]);
+
+      setProviderCategories(toCatalogueOptions(providersResponse));
+      setStates(toCatalogueOptions(statesResponse));
+      setCities(toCatalogueOptions(citiesResponse));
     } catch (error: any) {
       setErrorMessage(error.message || 'No se pudieron cargar los catálogos iniciales.');
     }
-  }, [getProveedores, getEstados, getCiudades]);
+  }, [getProveedores, getEstados, getCiudades, toCatalogueOptions]);
 
   React.useEffect(() => {
     if (hasLoadedCatalogues.current) {
@@ -124,6 +186,24 @@ export default function ProviderOnboarding(): React.JSX.Element {
     setForm((current) => ({
       ...current,
       [field]: event.target.value
+    }));
+  };
+
+  const updateNumericForm =
+    (field: 'categoria' | 'estado' | 'ciudad') => (event: React.ChangeEvent<HTMLInputElement>) => {
+      setForm((current) => ({
+        ...current,
+        [field]: Number(event.target.value)
+      }));
+    };
+
+  const updateLegalForm = (field: keyof LegalOnboardingInfo) => (event: React.ChangeEvent<HTMLInputElement>) => {
+    setForm((current) => ({
+      ...current,
+      datos_legales: {
+        ...current.datos_legales,
+        [field]: event.target.value
+      }
     }));
   };
 
@@ -156,21 +236,20 @@ export default function ProviderOnboarding(): React.JSX.Element {
   };
 
   const isBaseInfoComplete =
-    form.providerName.trim() !== '' &&
-    form.serviceCategory.trim() !== '' &&
-    form.city.trim() !== '' &&
-    form.state.trim() !== '' &&
-    form.country.trim() !== '' &&
-    form.address.trim() !== '' &&
-    form.phone.trim() !== '' &&
-    form.email.trim() !== '' &&
-    form.openingTime.trim() !== '' &&
-    form.closingTime.trim() !== '';
+    form.nombre_comercial.trim() !== '' &&
+    form.categoria !== 0 &&
+    form.ciudad !== 0 &&
+    form.estado !== 0 &&
+    form.direccion.trim() !== '' &&
+    form.telefono.trim() !== '' &&
+    form.correo.trim() !== '' &&
+    form.hora_apertura.trim() !== '' &&
+    form.hora_cierre.trim() !== '';
 
   const isLegalInfoComplete =
-    form.taxId.trim() !== '' &&
-    form.legalBusinessName.trim() !== '' &&
-    form.legalRepresentative.trim() !== '' &&
+    form.datos_legales.rfc.trim() !== '' &&
+    form.datos_legales.razon_social.trim() !== '' &&
+    form.datos_legales.representante_legal.trim() !== '' &&
     acceptTerms &&
     acceptPrivacy &&
     confirmCompliance;
@@ -187,6 +266,10 @@ export default function ProviderOnboarding(): React.JSX.Element {
 
   const canSubmit = isBaseInfoComplete && isLegalInfoComplete && hasValidServices;
 
+  const getCatalogueLabel = React.useCallback((items: CatalogueOption[], value: number): string => {
+    return items.find((item) => item.value === value)?.label ?? '';
+  }, []);
+
   const handleSubmit = (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
 
@@ -195,8 +278,8 @@ export default function ProviderOnboarding(): React.JSX.Element {
       return;
     }
 
-    const openingMinutes = Number(form.openingTime.split(':')[0]) * 60 + Number(form.openingTime.split(':')[1]);
-    const closingMinutes = Number(form.closingTime.split(':')[0]) * 60 + Number(form.closingTime.split(':')[1]);
+    const openingMinutes = Number(form.hora_apertura.split(':')[0]) * 60 + Number(form.hora_apertura.split(':')[1]);
+    const closingMinutes = Number(form.hora_cierre.split(':')[0]) * 60 + Number(form.hora_cierre.split(':')[1]);
 
     if (closingMinutes <= openingMinutes) {
       setErrorMessage('La hora de cierre debe ser mayor a la hora de apertura.');
@@ -220,36 +303,35 @@ export default function ProviderOnboarding(): React.JSX.Element {
       ]
     }));
 
-    const idBase = slugify(form.providerName);
-    const profile: ProviderProfile = {
-      id: `${idBase}-${Date.now()}`,
-      name: form.providerName.trim(),
-      serviceCategory: form.serviceCategory,
-      about: form.about.trim(),
-      city: form.city.trim(),
-      state: form.state.trim(),
-      country: form.country.trim(),
-      address: form.address.trim(),
-      phone: form.phone.trim(),
-      email: form.email.trim(),
-      whatsapp: form.whatsapp.trim() || form.phone.trim(),
+    const providerProfile: ProviderProfile = {
+      id: slugify(form.nombre_comercial),
+      name: form.nombre_comercial.trim(),
+      city: getCatalogueLabel(cities, form.ciudad),
+      state: getCatalogueLabel(states, form.estado),
+      country: 'México',
+      address: form.direccion.trim(),
+      phone: form.telefono.trim(),
+      email: form.correo.trim(),
+      whatsapp: form.whatsapp.trim(),
+      serviceCategory: getCatalogueLabel(providerCategories, form.categoria),
+      about: form.descripcion.trim(),
       services: mappedServices,
       schedule: {
-        openingTime: form.openingTime,
-        closingTime: form.closingTime,
+        openingTime: form.hora_apertura,
+        closingTime: form.hora_cierre,
         daysOff
       },
       legal: {
-        businessName: form.legalBusinessName.trim(),
-        legalRepresentative: form.legalRepresentative.trim(),
-        taxId: form.taxId.trim(),
+        businessName: form.datos_legales.razon_social.trim(),
+        legalRepresentative: form.datos_legales.representante_legal.trim(),
+        taxId: form.datos_legales.rfc.trim(),
         termsAcceptedAt: new Date().toISOString(),
         privacyAcceptedAt: new Date().toISOString(),
-        complianceConfirmed: true
+        complianceConfirmed: confirmCompliance
       }
     };
 
-    saveProviderProfile(profile);
+    saveProviderProfile(providerProfile);
     navigate('/search');
   };
 
@@ -270,28 +352,49 @@ export default function ProviderOnboarding(): React.JSX.Element {
 
           <Typography variant="h6">Información del negocio</Typography>
           <Stack direction={{ xs: 'column', md: 'row' }} spacing={2}>
-            <TextField label="Nombre comercial" value={form.providerName} onChange={updateForm('providerName')} fullWidth required />
-            <TextField select label="Categoría de servicio" value={form.serviceCategory} onChange={updateForm('serviceCategory')} fullWidth required>
-              {serviceCategories.map((category) => (
-                <MenuItem key={category} value={category}>
-                  {category}
+            <TextField label="Nombre comercial" value={form.nombre_comercial} onChange={updateForm('nombre_comercial')} fullWidth required />
+            <TextField select label="Categoría de servicio" value={form.categoria} onChange={updateNumericForm('categoria')} fullWidth required>
+              <MenuItem value={0} disabled>
+                Selecciona una categoría
+              </MenuItem>
+              {providerCategories.map((category) => (
+                <MenuItem key={category.value} value={category.value}>
+                  {category.label}
                 </MenuItem>
               ))}
             </TextField>
           </Stack>
 
-          <TextField label="Descripción del negocio" value={form.about} onChange={updateForm('about')} multiline minRows={3} fullWidth />
+          <TextField label="Descripción del negocio" value={form.descripcion} onChange={updateForm('descripcion')} multiline minRows={3} fullWidth />
 
           <Stack direction={{ xs: 'column', md: 'row' }} spacing={2}>
-            <TextField label="Ciudad" value={form.city} onChange={updateForm('city')} fullWidth required />
-            <TextField label="Estado" value={form.state} onChange={updateForm('state')} fullWidth required />
+            <TextField select label="Ciudad" value={form.ciudad} onChange={updateNumericForm('ciudad')} fullWidth required>
+              <MenuItem value={0} disabled>
+                Selecciona una ciudad
+              </MenuItem>
+              {cities.map((city) => (
+                <MenuItem key={city.value} value={city.value}>
+                  {city.label}
+                </MenuItem>
+              ))}
+            </TextField>
+            <TextField select label="Estado" value={form.estado} onChange={updateNumericForm('estado')} fullWidth required>
+              <MenuItem value={0} disabled>
+                Selecciona un estado
+              </MenuItem>
+              {states.map((state) => (
+                <MenuItem key={state.value} value={state.value}>
+                  {state.label}
+                </MenuItem>
+              ))}
+            </TextField>
           </Stack>
 
-          <TextField label="Dirección" value={form.address} onChange={updateForm('address')} fullWidth required />
+          <TextField label="Dirección" value={form.direccion} onChange={updateForm('direccion')} fullWidth required />
 
           <Stack direction={{ xs: 'column', md: 'row' }} spacing={2}>
-            <TextField label="Teléfono" value={form.phone} onChange={updateForm('phone')} fullWidth required />
-            <TextField label="Email" type="email" value={form.email} onChange={updateForm('email')} fullWidth required />
+            <TextField label="Teléfono" value={form.telefono} onChange={updateForm('telefono')} fullWidth required />
+            <TextField label="Email" type="email" value={form.correo} onChange={updateForm('correo')} fullWidth required />
             <TextField label="WhatsApp" value={form.whatsapp} onChange={updateForm('whatsapp')} fullWidth />
           </Stack>
 
@@ -300,8 +403,8 @@ export default function ProviderOnboarding(): React.JSX.Element {
             <TextField
               label="Hora apertura"
               type="time"
-              value={form.openingTime}
-              onChange={updateForm('openingTime')}
+              value={form.hora_apertura}
+              onChange={updateForm('hora_apertura')}
               InputLabelProps={{ shrink: true }}
               fullWidth
               required
@@ -309,8 +412,8 @@ export default function ProviderOnboarding(): React.JSX.Element {
             <TextField
               label="Hora cierre"
               type="time"
-              value={form.closingTime}
-              onChange={updateForm('closingTime')}
+              value={form.hora_cierre}
+              onChange={updateForm('hora_cierre')}
               InputLabelProps={{ shrink: true }}
               fullWidth
               required
@@ -400,10 +503,10 @@ export default function ProviderOnboarding(): React.JSX.Element {
 
           <Typography variant="h6">Datos legales y cumplimiento</Typography>
           <Stack direction={{ xs: 'column', md: 'row' }} spacing={2}>
-            <TextField label="Razón social" value={form.legalBusinessName} onChange={updateForm('legalBusinessName')} fullWidth required />
-            <TextField label="Representante legal" value={form.legalRepresentative} onChange={updateForm('legalRepresentative')} fullWidth required />
+            <TextField label="Razón social" value={form.datos_legales.razon_social} onChange={updateLegalForm('razon_social')} fullWidth required />
+            <TextField label="Representante legal" value={form.datos_legales.representante_legal} onChange={updateLegalForm('representante_legal')} fullWidth required />
           </Stack>
-          <TextField label="RFC o identificación fiscal" value={form.taxId} onChange={updateForm('taxId')} fullWidth required />
+          <TextField label="RFC o identificación fiscal" value={form.datos_legales.rfc} onChange={updateLegalForm('rfc')} fullWidth required />
 
           <Stack>
             <FormControlLabel
