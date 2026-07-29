@@ -13,6 +13,46 @@ import {
 	Typography
 } from '@mui/material';
 
+type Contacto = {
+	telefono: string;
+	email: string;
+	whatsapp: string;
+};
+
+type Legales = {
+	rfc : string;
+	representante_legal : string;
+}
+
+type Servicio = {
+	nombre: string;
+	descripcion: string;
+	duracion: string;
+	precio: string;
+	rating: string;
+	es_destacado: boolean;
+	orden: number;
+};
+
+type Horario = {
+	dia: number;
+	estado: string;
+};
+
+type Provider = {
+	nombre_legal: string;
+	nombre_comercial: string;
+	categoria : string;
+	ciudad: string;
+	estado: string;
+	rating: string;
+	idiomas: string[];
+	contacto : Contacto;
+	servicios: Servicio[];
+	legales: Legales;
+	horario: Horario[];
+};
+
 const provider = {
 	name: 'Hello Nails',
 	service: 'Uñas acrilicas, Gelish, Pedicure & Spa',
