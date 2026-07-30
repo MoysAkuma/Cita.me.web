@@ -33,7 +33,7 @@ export default function Home(): React.JSX.Element {
                     <Button variant="contained" size="large" component={Link} to="/search">
                         Buscar proveedores
                     </Button>
-                    <Button variant="outlined" size="large" component={Link} to="/provider">
+                    <Button variant="outlined" size="large" component={Link} to="/provider/44b0b79e-6308-41a6-8dec-c40f8539c37b">
                         Ver perfil de ejemplo
                     </Button>
                     <Button variant="text" size="large" component={Link} to="/request-appointment">

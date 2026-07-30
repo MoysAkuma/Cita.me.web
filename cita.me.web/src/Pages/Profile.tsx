@@ -1,121 +1,54 @@
 import React from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useParams } from 'react-router-dom';
 import {
 	Avatar,
+	Alert,
 	Box,
 	Button,
 	Chip,
+	CircularProgress,
 	Container,
 	Divider,
-	duration,
 	Paper,
 	Stack,
 	Typography
 } from '@mui/material';
+import { useGetProvider } from '../hooks/Provider/useGetProvider';
 
-type Contacto = {
-	telefono: string;
-	email: string;
-	whatsapp: string;
-};
-
-type Legales = {
-	rfc : string;
-	representante_legal : string;
-}
-
-type Servicio = {
-	nombre: string;
-	descripcion: string;
-	duracion: string;
-	precio: string;
-	rating: string;
-	es_destacado: boolean;
-	orden: number;
-};
-
-type Horario = {
-	dia: number;
-	estado: string;
-};
-
-type Provider = {
-	nombre_legal: string;
-	nombre_comercial: string;
-	categoria : string;
-	ciudad: string;
-	estado: string;
-	rating: string;
-	idiomas: string[];
-	contacto : Contacto;
-	servicios: Servicio[];
-	legales: Legales;
-	horario: Horario[];
-};
-
-const provider = {
-	name: 'Hello Nails',
-	service: 'Uñas acrilicas, Gelish, Pedicure & Spa',
-	rating: '5.0',
-	city: 'Culiacan',
-    state: 'Sinaloa',
-    country : 'Mexico',
-	address: 'Pablo macias valenzuela 4465, Fracc Jardines del Valle',
-	phone: '+52 667 270 0481',
-	email: 'fersh.cl17@gmail.com',
-	whatsapp: '+52 667 270 0481',
-	about:
-		'Atencion detallada y productos hipoalergenicos. Especialista en uñas acrilicas, Gelish, Pedicure & Spa.',
-	services: [
-		{
-			name: 'Uñas acrilicas',
-			description: 'Uñas duraderas y personalizadas con diseños modernos.',
-			requestInfo: [
-				'Selecciona el diseño y tipo de uñas.'
-			],
-			warnings: ['Requiere mantenimiento cada 2-3 semanas.'],
-			duration: '2 horas',
-			price: '$500 MXN'
-		},
-		{
-			name: 'Gelish',
-			description: 'Aplicación de Gelish para un acabado duradero y brillante.',
-			duration: '1.5 horas',
-			price: '$400 MXN'
-		},
-		{
-			name: 'Pedicure',
-			description: 'Pedicure completo con exfoliación y masaje.',
-			duration: '1 hora',
-			price: '$300 MXN'
-		},
-		{
-			name: 'Spa',
-			description: 'Tratamientos de spa para relajación y bienestar.',
-			duration: '2 horas',
-			price: '$600 MXN'
-		}
-	],
-	languages: ['Espanol'],
-	schedule: [
-		{ day: 'Lun', hours: '09:00 - 18:00', status: 'Disponible' },
-		{ day: 'Mar', hours: '09:00 - 18:00', status: 'Disponible' },
-		{ day: 'Mie', hours: '09:00 - 20:00', status: 'Alta demanda' },
-		{ day: 'Jue', hours: '09:00 - 18:00', status: 'Disponible' },
-		{ day: 'Vie', hours: '10:00 - 19:00', status: 'Disponible' },
-		{ day: 'Sab', hours: '10:00 - 14:00', status: 'Pocas citas' },
-		{ day: 'Dom', hours: 'No disponible', status: 'Cerrado' }
-	],
-	requestInfo: [
-		'Selecciona un servicio y una hora disponible.',
-		'Confirma tus datos de contacto y metodo de pago.',
-		'Recibe confirmacion inmediata y recordatorios.'
-	],
-	responseTime: 'Responde en menos de 1 hora',
-	bookingWindow: 'Reservas con 24 horas de anticipacion'
-};
+const dayLabels = ['Dom', 'Lun', 'Mar', 'Mie', 'Jue', 'Vie', 'Sab'];
 
 export default function Profile(): React.JSX.Element {
+	const { id } = useParams<{ id: string }>();
+	const { provider, loading, error } = useGetProvider(id ?? '');
+
+	if (loading) {
+		return (
+			<Container maxWidth="lg" sx={{ py: 8, display: 'flex', justifyContent: 'center' }}>
+				<CircularProgress />
+			</Container>
+		);
+	}
+
+	if (error) {
+		return (
+			<Container maxWidth="lg" sx={{ py: 6 }}>
+				<Alert severity="error">{error}</Alert>
+			</Container>
+		);
+	}
+
+	if (!provider) {
+		return (
+			<Container maxWidth="lg" sx={{ py: 6 }}>
+				<Alert severity="warning">No se encontro informacion del proveedor.</Alert>
+			</Container>
+		);
+	}
+
+	const scheduleByDay = new Map(
+		(provider.horario ?? []).map((slot) => [slot.dia_semana, slot])
+	);
+
 	return (
 		<Container 
 			maxWidth="lg" 
@@ -138,7 +71,7 @@ export default function Profile(): React.JSX.Element {
 							color: '#3e2723', 
 							fontSize: '32px' }}
 					>
-						{provider.name
+						{provider.nombre_comercial
 							.split(' ')
 							.map((part) => part[0])
 							.join('')}
@@ -148,16 +81,15 @@ export default function Profile(): React.JSX.Element {
 							variant="h3"
 							style={{ fontWeight: 700, color: '#2b2b2b', fontFamily: 'Playfair Display' }}
 						>
-							{provider.name}
+							{provider.nombre_comercial}
 						</Typography>
 						<Typography variant="h6" style={{ color: '#555', marginTop: '6px' }}>
-							{provider.service}
+							{provider.descripcion || 'Sin descripcion disponible.'}
 						</Typography>
 						<Stack direction="row" spacing={1} style={{ marginTop: '14px', flexWrap: 'wrap' }}>
 							<Chip label={`Calificacion ${provider.rating}`} style={{ backgroundColor: '#ffe0b2' }} />
-							<Chip label={provider.city} />
-							<Chip label={provider.responseTime} />
-							<Chip label={provider.bookingWindow} />
+							<Chip label={`${provider.ciudad.name}, ${provider.estado.name}`} />
+							<Chip label={provider.categoria.name} />
 						</Stack>
 					</Box>
 					<Stack spacing={1.5} style={{ minWidth: '180px' }}>
@@ -174,29 +106,20 @@ export default function Profile(): React.JSX.Element {
 			<Box mt={4} display="flex" flexDirection={{ xs: 'column', md: 'row' }} gap={3}>
 				<Paper elevation={0} style={{ flex: 1, padding: '24px', borderRadius: '18px' }}>
 					<Typography variant="h5" gutterBottom style={{ fontWeight: 700 }}>
-						Acerca de {provider.name}
+						Acerca de {provider.nombre_comercial}
 					</Typography>
 					<Typography 
 						variant="body1" 
 						style={{ color: '#555', lineHeight: 1.7 }}>
-						{provider.about}
+						{provider.descripcion || 'Sin descripcion disponible.'}
 					</Typography>
 					<Divider style={{ margin: '24px 0' }} />
 					<Typography variant="h6" style={{ fontWeight: 700 }}>
 						Servicios
 					</Typography>
 					<Stack direction="row" spacing={1} style={{ marginTop: '12px', flexWrap: 'wrap' }}>
-						{provider.services.map(({ name }) => (
-							<Chip key={name} label={name} style={{ marginBottom: '8px' }} />
-						))}
-					</Stack>
-					<Divider style={{ margin: '24px 0' }} />
-					<Typography variant="h6" style={{ fontWeight: 700 }}>
-						Idiomas
-					</Typography>
-					<Stack direction="row" spacing={1} style={{ marginTop: '12px' }}>
-						{provider.languages.map((language) => (
-							<Chip key={language} label={language} variant="outlined" />
+						{provider.servicios?.map((service) => (
+							<Chip key={service.id} label={service.name} style={{ marginBottom: '8px' }} />
 						))}
 					</Stack>
 					<Divider style={{ margin: '24px 0' }} />
@@ -204,35 +127,51 @@ export default function Profile(): React.JSX.Element {
 						Disponibilidad
 					</Typography>
 					<Stack spacing={1.5} style={{ marginTop: '16px' }}>
-						{provider.schedule.map((slot) => (
+						{dayLabels.map((dayLabel, dayIndex) => {
+							const slot = scheduleByDay.get(dayIndex);
+							const isRetrieved = Boolean(slot);
+							const availability = slot?.disponibilidad || (isRetrieved ? 'Disponible' : 'Sin datos');
+							const hours = isRetrieved
+								? `${slot?.hora_apertura} - ${slot?.hora_cierre}`
+								: 'No disponible';
+
+							return (
 							<Box
-								key={slot.day}
+								key={dayLabel}
 								display="flex"
 								justifyContent="space-between"
 								alignItems="center"
 							>
 								<Typography variant="body1" style={{ fontWeight: 600 }}>
-									{slot.day}
+									{dayLabel}
 								</Typography>
 								<Typography variant="body1" style={{ color: '#555' }}>
-									{slot.hours}
+									{hours}
 								</Typography>
 								<Chip
-									label={slot.status}
+									label={availability}
 									size="small"
 									style={{
 										backgroundColor:
-											slot.status === 'Cerrado'
+											availability === 'Cerrado'
 												? '#eeeeee'
-												: slot.status === 'Alta demanda'
+												: availability === 'Alta demanda'
 												? '#ffccbc'
-												: slot.status === 'Pocas citas'
+												: availability === 'Pocas citas'
 												? '#ffe0b2'
+												: availability === 'Sin datos'
+												? '#eeeeee'
 												: '#dcedc8'
 									}}
 								/>
 							</Box>
-						))}
+							);
+						})}
+						{(!provider.horario || provider.horario.length === 0) && (
+							<Typography variant="body2" style={{ color: '#777' }}>
+								No hay horarios registrados. Se muestran los dias con estado por defecto.
+							</Typography>
+						)}
 					</Stack>
 				</Paper>
 
@@ -242,25 +181,19 @@ export default function Profile(): React.JSX.Element {
 					</Typography>
 					<Stack spacing={1.5}>
 						<Typography variant="body1">
-							Direccion: {provider.address}
+							Direccion: {provider.direccion || 'No especificada'}
 						</Typography>
-						<Typography variant="body1">Telefono: {provider.phone}</Typography>
-						<Typography variant="body1">Email: {provider.email}</Typography>
+						<Typography variant="body1">Telefono: {provider.telefono || 'No especificado'}</Typography>
 						<Typography variant="body1">WhatsApp: {provider.whatsapp}</Typography>
 					</Stack>
 					<Divider style={{ margin: '24px 0' }} />
 					<Typography variant="h6" style={{ fontWeight: 700 }}>
-						Como solicitar un servicio
+						Ubicacion
 					</Typography>
 					<Stack spacing={1.5} style={{ marginTop: '12px' }}>
-						{provider.requestInfo.map((step, index) => (
-							<Box key={step} display="flex" gap={1.5}>
-								<Chip label={`${index + 1}`} size="small" style={{ backgroundColor: '#ffe0b2' }} />
-								<Typography variant="body2" style={{ color: '#555' }}>
-									{step}
-								</Typography>
-							</Box>
-						))}
+						<Typography variant="body2" style={{ color: '#555' }}>Ciudad: {provider.ciudad.name}</Typography>
+						<Typography variant="body2" style={{ color: '#555' }}>Estado: {provider.estado.name}</Typography>
+						<Typography variant="body2" style={{ color: '#555' }}>Categoria: {provider.categoria.name}</Typography>
 					</Stack>
 					<Button
 						variant="contained"

@@ -14,9 +14,9 @@ type HorarioOnboarding = {
 
 type Servicio = {
   id : number;
-  nombre: string;
+  name: string;
   descripcion: string;
-  duracion: string;
+  duration: string;
   precio: string;
   rating: string;
   es_destacado: boolean;
@@ -36,9 +36,14 @@ type DatosLegales = {
   rfc: string;
 };
 
+type SimpleCatalogue = {
+  id: number;
+  name: string;
+}
+
 export type OnboardingForm = {
   nombre_comercial: string;
-  categoria: number;
+  categoria: SimpleCatalogue;
   descripcion: string;
   ciudad: number;
   estado: number;
@@ -58,10 +63,9 @@ export type OnboardingForm = {
 export type ProviderProfile = {
   id: string;
   adminId : string;
-  categoria : number;
-  ciudad : number;
-  estado : number;
-  nombre_legal: string;
+  categoria : SimpleCatalogue;
+  ciudad : SimpleCatalogue;
+  estado : SimpleCatalogue;
   nombre_comercial: string;
   datos_legales: DatosLegales;
   descripcion: string;
@@ -75,18 +79,20 @@ export type ProviderProfile = {
   servicios : Servicio[];
 };
 
+export type GetSiteProviders = () => ProviderProfile[];
+
 export const defaultProviders: ProviderProfile[] = [
   {
     id: '44b0b79e-6308-41a6-8dec-c40f8539c37b',
     nombre_comercial: 'Hello Nails',
-    ciudad: 1,
-    estado: 1,
+    ciudad: { id: 1, name: 'Ciudad Name' },
+    estado: { id: 1, name: 'Estado Name' },
     direccion: 'Pablo Macías Valenzuela 4465, Fracc. Jardines del Valle',
     telefono: '+52 667 270 0481',
     adminId: 'admin-44b0b79e-6308-41a6-8dec-c40f8539c37b',
     email: 'hello-nails@example.com',
     whatsapp: '+52 667 270 0481',
-    categoria: 1,
+    categoria: { id: 1, name: 'Categoria Name' },
     datos_legales: {
       razon_social: 'Hello Nails S.A. de C.V.',
       representante_legal: 'Juan Pérez',
@@ -98,8 +104,8 @@ export const defaultProviders: ProviderProfile[] = [
     servicios: [
       {
         id: 1,
-        nombre: 'Uñas acrílicas',
-        duracion: '2 horas',
+        name: 'Uñas acrílicas',
+        duration: '2 horas',
         precio: '$500 MXN',
         descripcion: 'Aplicación de uñas acrílicas con diseño personalizado.',
         rating: '4.5',
@@ -108,8 +114,8 @@ export const defaultProviders: ProviderProfile[] = [
       },
       {
         id: 2,
-        nombre: 'Gelish',
-        duracion: '1.5 horas',
+        name: 'Gelish',
+        duration: '1.5 horas',
         precio: '$400 MXN',
         descripcion: 'Aplicación de esmalte en gel.',
         rating: '4.0',
@@ -136,3 +142,8 @@ export const defaultProviders: ProviderProfile[] = [
   }
 ];
 
+export const getSiteProviders: GetSiteProviders = () => {
+  return [...defaultProviders];
+};
+
+export type FiltersFetch = { categoria?: number; ciudad?: number; estado?: number };

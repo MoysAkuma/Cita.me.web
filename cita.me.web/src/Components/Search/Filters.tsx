@@ -3,6 +3,7 @@ import { Delete, FilterList } from "@mui/icons-material";
 import SearchIcon from '@mui/icons-material/Search';
 import LocationOnIcon from '@mui/icons-material/LocationOn';
 import CalendarTodayIcon from '@mui/icons-material/CalendarToday';
+import { FiltersFetch } from '../../data/providers';
 import { 
     TextField, 
     Typography, 
@@ -21,7 +22,20 @@ interface FilterValues {
     availabilityDate: string;
 }
 
-export default function Filters(): React.JSX.Element {
+type FiltersProps = {
+    onSearch?: (filters: FiltersFetch) => void;
+};
+
+const toOptionalNumber = (value: string): number | undefined => {
+    if (!value.trim()) {
+        return undefined;
+    }
+
+    const numberValue = Number(value);
+    return Number.isFinite(numberValue) ? numberValue : undefined;
+};
+
+export default function Filters({ onSearch }: FiltersProps): React.JSX.Element {
     const [showFilters, setShowFilters] = useState(false);
     const [filters, setFilters] = useState<FilterValues>({
         search: '',
@@ -46,8 +60,13 @@ export default function Filters(): React.JSX.Element {
     };
 
     const handleApplyFilters = () => {
-        // Add your filter logic here
-        console.log('Applying filters:', filters);
+        const payload: FiltersFetch = {
+            categoria: toOptionalNumber(filters.search),
+            estado: toOptionalNumber(filters.state),
+            ciudad: toOptionalNumber(filters.city)
+        };
+
+        onSearch?.(payload);
     };
 
     return (
@@ -169,7 +188,7 @@ export default function Filters(): React.JSX.Element {
                             fullWidth
                             onClick={handleApplyFilters}
                         >
-                            Aplicar Filtros
+                            Buscar
                         </Button>
                         <Button 
                             variant="outlined" 

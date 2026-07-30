@@ -55,7 +55,7 @@ function AppContent(): React.JSX.Element {
           <Route path="/" element={ <Home /> } />
           <Route path="*" element={ <Navigate to="/" replace /> } />
           <Route path="/search" element={ <Search /> } />
-          <Route path="/provider" element={ <Profile /> } />
+          <Route path="/provider/:id" element={ <Profile /> } />
           <Route path="/request-appointment" element={ <RequestAppointment /> } />
           <Route path="/appointments" element={ <Appointments /> } />
           <Route path="/login" element={ <Login /> } />
