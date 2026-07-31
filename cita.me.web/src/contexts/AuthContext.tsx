@@ -3,6 +3,7 @@ import { useLogin } from '../hooks/Auth/useLogin';
 import { useLogout } from '../hooks/Auth/useLogout';
 import { useRegisterUser } from '../hooks/Auth/useRegisterUser';
 import { useNavigate } from 'react-router-dom';
+import { useToast } from './ToastContext';
 
 interface User {
   id: string;
@@ -41,6 +42,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const [isLoading, setIsLoading] = useState(true);
   const navigate = useNavigate();
   const [error, setError] = useState<string | null>(null);
+  const { showToast } = useToast();
 
   const loginHook = useLogin();
   const logoutHook = useLogout();
@@ -68,6 +70,24 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
     checkSession();
   }, []);
+
+  useEffect(() => {
+    const handleSessionExpired = () => {
+      setUser(null);
+      setError('Tu sesión expiró. Inicia sesión nuevamente.');
+      showToast({
+        message: 'Tu sesión expiró. Inicia sesión nuevamente.',
+        severity: 'warning',
+      });
+      navigate('/login');
+    };
+
+    window.addEventListener('auth:session-expired', handleSessionExpired);
+
+    return () => {
+      window.removeEventListener('auth:session-expired', handleSessionExpired);
+    };
+  }, [navigate, showToast]);
 
   const login = async (email: string, password: string): Promise<void> => {
     setError(null);

@@ -1,4 +1,5 @@
 import axios, { AxiosError, InternalAxiosRequestConfig, AxiosResponse } from 'axios';
+import endpoints from '../config/endpoints.json';
 
 // 1. Obtener la URL base desde las variables de entorno.
 // Si usas Vite es: import.meta.env.VITE_API_URL
@@ -14,6 +15,60 @@ export const api = axios.create({
     'Accept': 'application/json',
   },
 });
+
+// Cliente sin interceptores para evitar ciclos al renovar el token.
+const refreshApi = axios.create({
+  baseURL: API_BASE_URL,
+  timeout: 10000,
+  headers: {
+    'Content-Type': 'application/json',
+    'Accept': 'application/json',
+  },
+});
+
+type RetriableRequestConfig = InternalAxiosRequestConfig & {
+  _retry?: boolean;
+};
+
+type PendingRequest = {
+  resolve: (token: string) => void;
+  reject: (error: unknown) => void;
+};
+
+let isRefreshing = false;
+let pendingRequests: PendingRequest[] = [];
+
+const flushPendingRequests = (error: unknown, token: string | null): void => {
+  pendingRequests.forEach(({ resolve, reject }) => {
+    if (token) {
+      resolve(token);
+      return;
+    }
+
+    reject(error);
+  });
+  pendingRequests = [];
+};
+
+const clearSession = (): void => {
+  sessionStorage.removeItem('accessToken');
+  sessionStorage.removeItem('refreshToken');
+  localStorage.removeItem('user');
+
+  if (typeof window !== 'undefined') {
+    window.dispatchEvent(new Event('auth:session-expired'));
+  }
+};
+
+const isAuthRoute = (url?: string): boolean => {
+  if (!url) {
+    return false;
+  }
+
+  return [endpoints.auth.login, endpoints.auth.register, endpoints.auth.refresh].some((route) =>
+    url.includes(route)
+  );
+};
 
 // 3. INTERCEPTOR DE PETICIÓN (Request)
 // Se ejecuta ANTES de que la petición salga hacia el backend.
@@ -44,27 +99,72 @@ api.interceptors.response.use(
     // Si la respuesta es exitosa (status 2xx), la dejamos pasar tal cual
     return response;
   },
-  (error: AxiosError): Promise<AxiosError> => {
-    // Si el servidor responde con un código de error (4xx, 5xx)
-    if (error.response) {
-      const { status } = error.response;
+  async (error: AxiosError): Promise<AxiosResponse> => {
+    const originalRequest = error.config as RetriableRequestConfig | undefined;
+    const status = error.response?.status;
 
-      if (status === 401) {
-        // Ejemplo: El token expiró o es inválido. 
-        // Aquí puedes borrar el token obsoleto y redirigir al login.
-        console.warn('Sesión expirada o no autorizada. Limpiando datos...');
-        sessionStorage.removeItem('accessToken');
-        sessionStorage.removeItem('refreshToken');
-        localStorage.removeItem('user');
-        
-        // Opcional: Redirigir al usuario (dependiendo de cómo manejes tus rutas)
-        // window.location.href = '/login';
+    if (
+      status === 401 &&
+      originalRequest &&
+      !originalRequest._retry &&
+      !isAuthRoute(originalRequest.url)
+    ) {
+      const storedRefreshToken = sessionStorage.getItem('refreshToken');
+
+      if (!storedRefreshToken) {
+        clearSession();
+        return Promise.reject(error);
       }
 
-      if (status === 500) {
-        console.error('Error interno del servidor. Inténtalo más tarde.');
+      if (isRefreshing) {
+        return new Promise((resolve, reject) => {
+          pendingRequests.push({
+            resolve: (token: string) => {
+              if (originalRequest.headers) {
+                originalRequest.headers.Authorization = `Bearer ${token}`;
+              }
+              resolve(api(originalRequest));
+            },
+            reject,
+          });
+        });
       }
-    } else if (error.request) {
+
+      originalRequest._retry = true;
+      isRefreshing = true;
+
+      try {
+        const refreshResponse = await refreshApi.post(endpoints.auth.refresh, {
+          refreshToken: storedRefreshToken,
+        });
+        const newAccessToken = refreshResponse.data?.data?.accessToken as string | undefined;
+
+        if (!newAccessToken) {
+          throw new Error('No access token returned by refresh endpoint');
+        }
+
+        sessionStorage.setItem('accessToken', newAccessToken);
+        flushPendingRequests(null, newAccessToken);
+
+        if (originalRequest.headers) {
+          originalRequest.headers.Authorization = `Bearer ${newAccessToken}`;
+        }
+
+        return api(originalRequest);
+      } catch (refreshError) {
+        flushPendingRequests(refreshError, null);
+        clearSession();
+        return Promise.reject(refreshError);
+      } finally {
+        isRefreshing = false;
+      }
+    }
+
+    if (status === 500) {
+      console.error('Error interno del servidor. Inténtalo más tarde.');
+    }
+
+    if (error.request) {
       // La petición se hizo pero el servidor nunca respondió (error de red)
       console.error('No se pudo conectar con el servidor. Verifica tu conexión.');
     }

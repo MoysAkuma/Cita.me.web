@@ -11,6 +11,7 @@ import Appointments from './Pages/Appointments';
 import Login from './Pages/Login';
 import ProviderOnboarding from './Pages/ProviderOnboarding';
 import UserRegister from './Pages/UserRegister';
+import { ToastProvider } from './contexts/ToastContext';
 import './App.css';
 
 const appTheme = createTheme({
@@ -116,21 +117,23 @@ export default function App(): React.JSX.Element {
     <BrowserRouter>
       <ThemeProvider theme={appTheme}>
         <CssBaseline />
-        <AuthProvider>
-          <Box
-            sx={{
-              minHeight: '100vh',
-              display: 'flex',
-              flexDirection: 'column',
-              flexGrow: 1,
-              background:
-                'linear-gradient(180deg, rgba(91,127,255,0.08) 0%, rgba(124,77,255,0.06) 45%, rgba(246,248,255,1) 100%)'
-            }}
-          >
-            <AppHeader />
-            <AppContent />
-          </Box>
-        </AuthProvider>
+        <ToastProvider>
+          <AuthProvider>
+            <Box
+              sx={{
+                minHeight: '100vh',
+                display: 'flex',
+                flexDirection: 'column',
+                flexGrow: 1,
+                background:
+                  'linear-gradient(180deg, rgba(91,127,255,0.08) 0%, rgba(124,77,255,0.06) 45%, rgba(246,248,255,1) 100%)'
+              }}
+            >
+              <AppHeader />
+              <AppContent />
+            </Box>
+          </AuthProvider>
+        </ToastProvider>
       </ThemeProvider>
     </BrowserRouter>
   );

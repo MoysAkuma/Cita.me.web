@@ -13,19 +13,41 @@ import {
   TextField,
   Typography
 } from '@mui/material';
-import { ProviderProfile } from '../data/providers';
 import { useCatProveedores } from '../hooks/Catalogues/useCatProveedores';
 import { useCatEstados } from '../hooks/Catalogues/useCatEstados';
 import { useCatCiudad } from '../hooks/Catalogues/useCatCiudad';
-
-type OnboardingService = ProviderProfile['servicios'][number];
+import { useOnboarding } from '../hooks/Provider/useOnboarding';
+import { useAuth } from '../contexts/AuthContext';
 
 type CatalogueOption = {
-  value: number;
-  label: string;
+  id: number;
+  name: string;
 };
 
-type OnboardingForm = Omit<ProviderProfile, 'id' | 'adminId' | 'horario' | 'servicios' | 'rating'> & {
+type OnboardingService = {
+  nombre: string;
+  descripcion: string;
+  duracion: string;
+  precio: string;
+  rating: string;
+  es_destacado: boolean;
+  orden: number;
+};
+
+type OnboardingForm = {
+  nombre_comercial: string;
+  categoria: CatalogueOption;
+  descripcion: string;
+  ciudad: CatalogueOption;
+  estado: CatalogueOption;
+  direccion: string;
+  codigo_postal: string;
+  telefono: string;
+  whatsapp: string;
+  email: string;
+  nombre_legal: string;
+  representante_legal: string;
+  rfc: string;
   hora_apertura: string;
   hora_cierre: string;
   dias_descanso: number[];
@@ -43,7 +65,6 @@ const weekDays = [
 ];
 
 const emptyService: OnboardingService = {
-  id: 1,
   nombre: '',
   descripcion: '',
   duracion: '',
@@ -53,41 +74,37 @@ const emptyService: OnboardingService = {
   orden: 1
 };
 
-const providersStorageKey = 'siteProviders';
-
-function slugify(value: string): string {
-  return value
-    .toLowerCase()
-    .normalize('NFD')
-    .replace(/[\u0300-\u036f]/g, '')
-    .replace(/[^a-z0-9]+/g, '-')
-    .replace(/(^-|-$)+/g, '');
-}
+const emptyCatalogueOption: CatalogueOption = {
+  id: 0,
+  name: ''
+};
 
 export default function ProviderOnboarding(): React.JSX.Element {
   const navigate = useNavigate();
+  const { user } = useAuth();
+  const { onboard, loading, error } = useOnboarding(user?.id ?? '');
   const { getProveedores } = useCatProveedores();
   const { getEstados } = useCatEstados();
   const { getCiudades } = useCatCiudad();
   const hasLoadedCatalogues = React.useRef(false);
   const [form, setForm] = React.useState<OnboardingForm>({
     nombre_comercial: '',
-    categoria: 0,
+    categoria: emptyCatalogueOption,
     descripcion: '',
-    ciudad: 0,
-    estado: 0,
+    ciudad: emptyCatalogueOption,
+    estado: emptyCatalogueOption,
     direccion: '',
     telefono: '',
     email: '',
-    telefono_whatsapp: '',
+    whatsapp: '',
+    nombre_legal: '',
+    representante_legal: '',
+    rfc: '',
     codigo_postal: '',
     hora_apertura: '09:00',
     hora_cierre: '18:00',
-    nombre_legal: '',
-    rfc: '',
     servicios: [{ ...emptyService }],
     dias_descanso: []
-
   });
   const [acceptTerms, setAcceptTerms] = React.useState(false);
   const [acceptPrivacy, setAcceptPrivacy] = React.useState(false);
@@ -135,8 +152,8 @@ export default function ProviderOnboarding(): React.JSX.Element {
           }
 
           return {
-            value,
-            label: String(label)
+            id: value,
+            name: String(label)
           };
         })
         .filter((item: CatalogueOption | null): item is CatalogueOption => item !== null),
@@ -171,17 +188,28 @@ export default function ProviderOnboarding(): React.JSX.Element {
   const updateForm =
     (field: keyof OnboardingForm) =>
     (event: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
-    setForm((current) => ({
-      ...current,
-      [field]: event.target.value
-    }));
+      setForm((current) => ({
+        ...current,
+        [field]: event.target.value
+      }));
     };
 
   const updateNumericForm =
     (field: 'categoria' | 'estado' | 'ciudad') => (event: React.ChangeEvent<HTMLInputElement>) => {
+      const selectedId = Number(event.target.value);
+      const optionsByField: Record<'categoria' | 'estado' | 'ciudad', CatalogueOption[]> = {
+        categoria: providerCategories,
+        estado: states,
+        ciudad: cities
+      };
+      const selectedOption = optionsByField[field].find((option) => option.id === selectedId) ?? {
+        id: selectedId,
+        name: ''
+      };
+
       setForm((current) => ({
         ...current,
-        [field]: Number(event.target.value)
+        [field]: selectedOption
       }));
     };
 
@@ -230,7 +258,6 @@ export default function ProviderOnboarding(): React.JSX.Element {
         ...current.servicios,
         {
           ...emptyService,
-          id: current.servicios.length + 1,
           orden: current.servicios.length + 1
         }
       ]
@@ -244,7 +271,6 @@ export default function ProviderOnboarding(): React.JSX.Element {
         .filter((_, serviceIndex) => serviceIndex !== index)
         .map((service, serviceIndex) => ({
           ...service,
-          id: serviceIndex + 1,
           orden: serviceIndex + 1
         }))
     }));
@@ -252,9 +278,9 @@ export default function ProviderOnboarding(): React.JSX.Element {
 
   const isBaseInfoComplete =
     form.nombre_comercial.trim() !== '' &&
-    form.categoria !== 0 &&
-    form.ciudad !== 0 &&
-    form.estado !== 0 &&
+    form.categoria.id !== 0 &&
+    form.ciudad.id !== 0 &&
+    form.estado.id !== 0 &&
     form.direccion.trim() !== '' &&
     form.codigo_postal.trim() !== '' &&
     form.telefono.trim() !== '' &&
@@ -263,8 +289,8 @@ export default function ProviderOnboarding(): React.JSX.Element {
     form.hora_cierre.trim() !== '';
 
   const isLegalInfoComplete =
-    form.rfc.trim() !== '' &&
     form.nombre_legal.trim() !== '' &&
+    form.rfc.trim() !== '' &&
     acceptTerms &&
     acceptPrivacy &&
     confirmCompliance;
@@ -274,24 +300,19 @@ export default function ProviderOnboarding(): React.JSX.Element {
     form.servicios.every(
       (service) =>
         service.nombre.trim() !== '' &&
-        service.duracion.trim() !== '' &&
-        service.precio.trim() !== ''
+        Number(service.duracion) > 0 &&
+        Number(service.precio) > 0
     );
 
   const canSubmit = isBaseInfoComplete && isLegalInfoComplete && hasValidServices;
 
-  const saveProviderProfile = React.useCallback((providerProfile: ProviderProfile) => {
-    const existingProviders = JSON.parse(localStorage.getItem(providersStorageKey) ?? '[]') as ProviderProfile[];
-    const hasProvider = existingProviders.some((provider) => provider.id === providerProfile.id);
-    const updatedProviders = hasProvider
-      ? existingProviders.map((provider) => (provider.id === providerProfile.id ? providerProfile : provider))
-      : [...existingProviders, providerProfile];
-
-    localStorage.setItem(providersStorageKey, JSON.stringify(updatedProviders));
-  }, []);
-
-  const handleSubmit = (event: React.FormEvent<HTMLFormElement>) => {
+  const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
+
+    if (!user?.id) {
+      setErrorMessage('Debes iniciar sesión para completar el onboarding.');
+      return;
+    }
 
     if (!canSubmit) {
       setErrorMessage('Completa todos los campos obligatorios, servicios y validaciones legales.');
@@ -306,50 +327,34 @@ export default function ProviderOnboarding(): React.JSX.Element {
       return;
     }
 
-    const businessId = `${slugify(form.nombre_comercial)}-${Date.now()}`;
-    const mappedSchedule = weekDays
-      .filter((day) => !form.dias_descanso.includes(day.id))
-      .map((day) => ({
-        hora_apertura: form.hora_apertura,
-        hora_cierre: form.hora_cierre,
-        dia_semana: day.id,
-        status: 'activo',
-        disponibilidad: 'disponible'
-      }));
-
-    const mappedServices = form.servicios.map((service, index) => ({
-      ...service,
-      id: index + 1,
-      orden: index + 1,
+    const mappedServices = form.servicios.map((service) => ({
       nombre: service.nombre.trim(),
       descripcion: service.descripcion.trim(),
-      duracion: service.duracion.trim(),
-      precio: service.precio.trim(),
-      rating: service.rating.trim() === '' ? '0.0' : service.rating.trim()
+      duracion: Number(service.duracion),
+      precio: Number(service.precio)
     }));
 
-    const providerProfile: ProviderProfile = {
-      id: businessId,
-      adminId: `admin-${businessId}`,
-      categoria: form.categoria,
-      ciudad: form.ciudad,
-      estado: form.estado,
-      nombre_legal: form.nombre_legal.trim(),
+    await onboard({
       nombre_comercial: form.nombre_comercial.trim(),
-      rfc: form.rfc.trim(),
+      categoria: form.categoria.id,
       descripcion: form.descripcion.trim(),
-      rating: '0.0',
+      ciudad: form.ciudad.id,
+      estado: form.estado.id,
       direccion: form.direccion.trim(),
       codigo_postal: form.codigo_postal.trim(),
       telefono: form.telefono.trim(),
-      telefono_whatsapp: form.telefono_whatsapp.trim(),
+      whatsapp: form.whatsapp.trim(),
       email: form.email.trim(),
-      horario: mappedSchedule,
-      servicios: mappedServices
-    };
-
-    saveProviderProfile(providerProfile);
-    navigate('/search');
+      dias_descanso: form.dias_descanso,
+      hora_apertura: form.hora_apertura,
+      hora_cierre: form.hora_cierre,
+      servicios: mappedServices,
+      datos_legales: {
+        razon_social: form.nombre_legal.trim(),
+        representante_legal: form.representante_legal.trim(),
+        rfc: form.rfc.trim()
+      }
+    });
   };
 
   return (
@@ -365,18 +370,18 @@ export default function ProviderOnboarding(): React.JSX.Element {
             </Typography>
           </Box>
 
-          {errorMessage && <Alert severity="error">{errorMessage}</Alert>}
+          {(errorMessage || error) && <Alert severity="error">{errorMessage || error}</Alert>}
 
           <Typography variant="h6">Información del negocio</Typography>
           <Stack direction={{ xs: 'column', md: 'row' }} spacing={2}>
             <TextField label="Nombre comercial" value={form.nombre_comercial} onChange={updateForm('nombre_comercial')} fullWidth required />
-            <TextField select label="Categoría de servicio" value={form.categoria} onChange={updateNumericForm('categoria')} fullWidth required>
+            <TextField select label="Categoría de servicio" value={form.categoria.id} onChange={updateNumericForm('categoria')} fullWidth required>
               <MenuItem value={0} disabled>
                 Selecciona una categoría
               </MenuItem>
               {providerCategories.map((category) => (
-                <MenuItem key={category.value} value={category.value}>
-                  {category.label}
+                <MenuItem key={category.id} value={category.id}>
+                  {category.name}
                 </MenuItem>
               ))}
             </TextField>
@@ -385,23 +390,23 @@ export default function ProviderOnboarding(): React.JSX.Element {
           <TextField label="Descripción del negocio" value={form.descripcion} onChange={updateForm('descripcion')} multiline minRows={3} fullWidth />
 
           <Stack direction={{ xs: 'column', md: 'row' }} spacing={2}>
-            <TextField select label="Ciudad" value={form.ciudad} onChange={updateNumericForm('ciudad')} fullWidth required>
+            <TextField select label="Ciudad" value={form.ciudad.id} onChange={updateNumericForm('ciudad')} fullWidth required>
               <MenuItem value={0} disabled>
                 Selecciona una ciudad
               </MenuItem>
               {cities.map((city) => (
-                <MenuItem key={city.value} value={city.value}>
-                  {city.label}
+                <MenuItem key={city.id} value={city.id}>
+                  {city.name}
                 </MenuItem>
               ))}
             </TextField>
-            <TextField select label="Estado" value={form.estado} onChange={updateNumericForm('estado')} fullWidth required>
+            <TextField select label="Estado" value={form.estado.id} onChange={updateNumericForm('estado')} fullWidth required>
               <MenuItem value={0} disabled>
                 Selecciona un estado
               </MenuItem>
               {states.map((state) => (
-                <MenuItem key={state.value} value={state.value}>
-                  {state.label}
+                <MenuItem key={state.id} value={state.id}>
+                  {state.name}
                 </MenuItem>
               ))}
             </TextField>
@@ -412,7 +417,7 @@ export default function ProviderOnboarding(): React.JSX.Element {
           <Stack direction={{ xs: 'column', md: 'row' }} spacing={2}>
             <TextField label="Teléfono" value={form.telefono} onChange={updateForm('telefono')} fullWidth required />
             <TextField label="Email" type="email" value={form.email} onChange={updateForm('email')} fullWidth required />
-            <TextField label="WhatsApp" value={form.telefono_whatsapp} onChange={updateForm('telefono_whatsapp')} fullWidth />
+            <TextField label="WhatsApp" value={form.whatsapp} onChange={updateForm('whatsapp')} fullWidth />
           </Stack>
 
           <TextField label="Código postal" value={form.codigo_postal} onChange={updateForm('codigo_postal')} fullWidth required />
@@ -469,9 +474,10 @@ export default function ProviderOnboarding(): React.JSX.Element {
                     />
                     <TextField
                       label="Precio"
+                      type="number"
                       value={service.precio}
                       onChange={updateService(index, 'precio')}
-                      placeholder="$500 MXN"
+                      placeholder="500"
                       fullWidth
                       required
                     />
@@ -479,10 +485,11 @@ export default function ProviderOnboarding(): React.JSX.Element {
 
                   <Stack direction={{ xs: 'column', md: 'row' }} spacing={2}>
                     <TextField
-                      label="Duración"
+                      label="Duración (minutos)"
+                      type="number"
                       value={service.duracion}
                       onChange={updateService(index, 'duracion')}
-                      placeholder="1 hora 30 min"
+                      placeholder="60"
                       fullWidth
                       required
                     />
@@ -527,6 +534,7 @@ export default function ProviderOnboarding(): React.JSX.Element {
           <Stack direction={{ xs: 'column', md: 'row' }} spacing={2}>
             <TextField label="Nombre legal" value={form.nombre_legal} onChange={updateForm('nombre_legal')} fullWidth required />
             <TextField label="RFC o identificación fiscal" value={form.rfc} onChange={updateForm('rfc')} fullWidth required />
+            <TextField label="Representante legal" value={form.representante_legal} onChange={updateForm('representante_legal')} fullWidth />
           </Stack>
 
           <Stack>
@@ -545,7 +553,7 @@ export default function ProviderOnboarding(): React.JSX.Element {
           </Stack>
 
           <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1.5}>
-            <Button variant="contained" type="submit" disabled={!canSubmit} fullWidth>
+            <Button variant="contained" type="submit" disabled={!canSubmit || loading} fullWidth>
               Crear perfil de proveedor
             </Button>
             <Button variant="outlined" onClick={() => navigate('/search')} fullWidth>
