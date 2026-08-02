@@ -1,22 +1,19 @@
-import { useState } from 'react';
 import { refreshToken } from '../../services/AuthService';
+import { useAsyncStatus } from '../common/useAsyncStatus';
 
 export const useRefresh = () => {
-    const [loading, setLoading] = useState(false);
-    const [error, setError] = useState<string | null>(null);
-    const [success, setSuccess] = useState(false);
+    const { loading, error, success, start, succeed, fail, finish } = useAsyncStatus();
 
     const refresh = async (tokenData: any) => {
-        setLoading(true);
-        setError(null);
-        setSuccess(false);
+        start();
         try {
             await refreshToken(tokenData);
-            setSuccess(true);
-        } catch (err: any) {
-            setError(err.message || 'Error refreshing token');
+            succeed();
+        } catch (err: unknown) {
+            fail(err, 'Error refreshing token');
+        } finally {
+            finish();
         }
-        setLoading(false);
     }
     return { loading, error, success, refresh };
 };

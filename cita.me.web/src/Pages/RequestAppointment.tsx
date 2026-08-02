@@ -1,11 +1,12 @@
 import React from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useNavigate, useParams } from 'react-router-dom';
 import {
   Alert,
   Box,
   Button,
   Chip,
   Container,
+  CircularProgress,
   MenuItem,
   Paper,
   Stack,
@@ -13,25 +14,9 @@ import {
   Typography
 } from '@mui/material';
 import { useAuth } from '../contexts/AuthContext';
-import { getSiteProviders, ProviderProfile } from '../data/providers';
-
-type Appointment = {
-  id: string;
-  providerId: string;
-  providerName: string;
-  serviceId: string;
-  serviceName: string;
-  date: string;
-  preferredTime: string;
-  requesterName: string;
-  requesterPhone: string;
-  requesterEmail: string;
-  notes: string;
-  customFields: Record<string, string>;
-  requestedByUserId: string | null;
-  createdAt: string;
-  status: 'pending';
-};
+import { SolictudCitaForm } from '../data/appointments';
+import { useRequestAppointment } from '../hooks/Appointments/useRequestAppointment';
+import { useGetProvider } from '../hooks/Provider/useGetProvider';
 
 type CalendarEvent = {
   id: string;
@@ -42,15 +27,26 @@ type CalendarEvent = {
   start: string;
   end: string;
   providerId: string;
-  serviceId: string;
+  serviceId: number;
   createdAt: string;
 };
 
-const normalizeDay = (value: string): string =>
-  value
-    .toLowerCase()
-    .normalize('NFD')
-    .replace(/[\u0300-\u036f]/g, '');
+type LocalAppointment = {
+  id: string;
+  providerId: string;
+  providerName: string;
+  serviceId: number;
+  serviceName: string;
+  date: string;
+  preferredTime: string;
+  requesterName: string;
+  requesterPhone: string;
+  requesterEmail: string;
+  notes: string;
+  requestedByUserId: string | null;
+  createdAt: string;
+  status: 'pending';
+};
 
 const toMinutes = (time: string): number => {
   const [hours, minutes] = time.split(':').map(Number);
@@ -68,9 +64,43 @@ const toHourLabel = (totalMinutes: number): string => {
   return `${hours}:${minutes}`;
 };
 
-const getWeekdayName = (isoDate: string): string => {
-  const date = new Date(`${isoDate}T12:00:00`);
-  return normalizeDay(new Intl.DateTimeFormat('es-MX', { weekday: 'long' }).format(date));
+const durationToMinutes = (duration: unknown): number => {
+  if (typeof duration === 'number' && Number.isFinite(duration)) {
+    return duration > 0 ? duration : 60;
+  }
+
+  if (typeof duration === 'object' && duration !== null) {
+    const record = duration as Record<string, unknown>;
+    const numericValue = record.value ?? record.minutes ?? record.minutos ?? record.duracion;
+    if (typeof numericValue === 'number' && Number.isFinite(numericValue) && numericValue > 0) {
+      return numericValue;
+    }
+
+    const textValue = record.text ?? record.label ?? record.descripcion;
+    if (typeof textValue === 'string') {
+      return durationToMinutes(textValue);
+    }
+  }
+
+  if (typeof duration !== 'string') {
+    return 60;
+  }
+
+  const value = duration.toLowerCase().trim();
+
+  if (/^\d+$/.test(value)) {
+    const parsed = Number(value);
+    return parsed > 0 ? parsed : 60;
+  }
+
+  const hourMatch = value.match(/(\d+(?:[\.,]\d+)?)\s*h/);
+  const minuteMatch = value.match(/(\d+)\s*m/);
+
+  const hours = hourMatch ? Number(hourMatch[1].replace(',', '.')) : 0;
+  const minutes = minuteMatch ? Number(minuteMatch[1]) : 0;
+  const total = Math.round(hours * 60) + minutes;
+
+  return total > 0 ? total : 60;
 };
 
 const formatIcsDate = (date: Date): string => {
@@ -131,10 +161,17 @@ type BaseFormData = {
 export default function RequestAppointment(): React.JSX.Element {
   const { user } = useAuth();
   const navigate = useNavigate();
-  const providers = React.useMemo(() => getSiteProviders(), []);
-  const [selectedProviderId, setSelectedProviderId] = React.useState<string>(providers[0]?.id ?? '');
+  const { id } = useParams<{ id: string }>();
+  const {
+    loading: isRequestingAppointment,
+    error: requestError,
+    success: requestSuccess,
+    requestAppointment,
+  } = useRequestAppointment();
+  const { provider: selectedProvider, loading: providerLoading, error: providerError } = useGetProvider(id ?? '');
   const [selectedServiceId, setSelectedServiceId] = React.useState<string>('');
   const [selectedDate, setSelectedDate] = React.useState<string>('');
+  const [dateError, setDateError] = React.useState<string | null>(null);
   const [baseForm, setBaseForm] = React.useState<BaseFormData>({
     fullName: '',
     phone: '',
@@ -142,33 +179,83 @@ export default function RequestAppointment(): React.JSX.Element {
     preferredTime: '',
     notes: ''
   });
-  const [customFields, setCustomFields] = React.useState<Record<string, string>>({});
 
-  const selectedProvider: ProviderProfile | undefined =
-    providers.find((provider) => provider.id === selectedProviderId) ?? providers[0];
+  const availableServices = selectedProvider?.servicios ?? [];
 
-  React.useEffect(() => {
-    if (!selectedProviderId && providers[0]) {
-      setSelectedProviderId(providers[0].id);
+  const selectedService = availableServices.find((service) => String(service.id) === selectedServiceId);
+
+  const selectedWeekday = React.useMemo(() => {
+    if (selectedDate === '') {
+      return null;
     }
-  }, [providers, selectedProviderId]);
 
-  const availableServices = selectedProvider?.services ?? [];
+    const jsDay = new Date(`${selectedDate}T12:00:00`).getDay();
+    return {
+      jsDay,
+      // Some APIs use Sunday as 7 instead of 0.
+      normalizedDay: jsDay === 0 ? 7 : jsDay,
+    };
+  }, [selectedDate]);
 
-  const selectedService = availableServices.find((service) => service.id === selectedServiceId);
+  const selectedDayHorario = React.useMemo(() => {
+    if (!selectedProvider || !selectedWeekday) {
+      return null;
+    }
 
-  const isSelectedDateOnDayOff =
-    selectedDate !== '' &&
-    (selectedProvider?.schedule.daysOff ?? []).some((day) => normalizeDay(day) === getWeekdayName(selectedDate));
+    return (
+      selectedProvider.horario.find(
+        (item) => item.dia_semana === selectedWeekday.jsDay || item.dia_semana === selectedWeekday.normalizedDay
+      ) ?? null
+    );
+  }, [selectedProvider, selectedWeekday]);
+
+  const isSelectedDateOnDayOff = selectedDate !== '' && !selectedDayHorario;
+
+  const isDateAvailableForProvider = React.useCallback(
+    (isoDate: string): boolean => {
+      if (!selectedProvider || isoDate === '') {
+        return false;
+      }
+
+      const jsDay = new Date(`${isoDate}T12:00:00`).getDay();
+      const normalizedDay = jsDay === 0 ? 7 : jsDay;
+
+      return selectedProvider.horario.some(
+        (item) => item.dia_semana === jsDay || item.dia_semana === normalizedDay
+      );
+    },
+    [selectedProvider]
+  );
+
+  const handleDateChange = (nextDate: string) => {
+    if (nextDate === '') {
+      setSelectedDate('');
+      setDateError(null);
+      return;
+    }
+
+    if (!isDateAvailableForProvider(nextDate)) {
+      setDateError('Este proveedor no atiende en el día seleccionado.');
+      setSelectedDate('');
+      return;
+    }
+
+    setDateError(null);
+    setSelectedDate(nextDate);
+  };
 
   const availableTimeSlots = React.useMemo(() => {
     if (!selectedProvider || !selectedService || selectedDate === '' || isSelectedDateOnDayOff) {
       return [];
     }
 
-    const openingMinutes = toMinutes(selectedProvider.schedule.openingTime);
-    const closingMinutes = toMinutes(selectedProvider.schedule.closingTime);
-    const durationMinutes = selectedService.duration.value;
+    if (!selectedDayHorario) {
+      return [];
+    }
+
+    const openingMinutes = toMinutes(selectedDayHorario.hora_apertura);
+    const closingMinutes = toMinutes(selectedDayHorario.hora_cierre);
+    const durationMinutes = durationToMinutes(selectedService.duration);
 
     if (openingMinutes < 0 || closingMinutes < 0 || durationMinutes <= 0 || closingMinutes <= openingMinutes) {
       return [];
@@ -183,8 +270,8 @@ export default function RequestAppointment(): React.JSX.Element {
   }, [
     isSelectedDateOnDayOff,
     selectedDate,
-    selectedProvider?.schedule.closingTime,
-    selectedProvider?.schedule.openingTime,
+    selectedDayHorario?.hora_apertura,
+    selectedDayHorario?.hora_cierre,
     selectedService
   ]);
 
@@ -206,37 +293,41 @@ export default function RequestAppointment(): React.JSX.Element {
     }));
   };
 
-  const handleCustomChange = (fieldCode: string) => (event: React.ChangeEvent<HTMLInputElement>) => {
-    setCustomFields((current) => ({
-      ...current,
-      [fieldCode]: event.target.value
-    }));
-  };
-
-  const requiredCustomFieldsCompleted =
-    selectedService?.fields
-      .filter((field) => field.required)
-      .every((field) => (customFields[field.code] ?? '').trim() !== '') ?? true;
-
   const canConfirmAppointment =
     selectedServiceId !== '' &&
     selectedDate !== '' &&
     !isSelectedDateOnDayOff &&
     baseForm.preferredTime.trim() !== '' &&
     baseForm.fullName.trim() !== '' &&
-    baseForm.phone.trim() !== '' &&
-    requiredCustomFieldsCompleted;
+    baseForm.phone.trim() !== '';
 
-  const saveAppointment = () => {
+  const saveAppointment = async () => {
     if (!selectedProvider || !selectedService || !canConfirmAppointment) {
       return;
     }
 
-    const existingAppointments = JSON.parse(localStorage.getItem('appointments') ?? '[]') as Appointment[];
-    const appointment: Appointment = {
+    const appointmentPayload: SolictudCitaForm = {
+      proveedorId: selectedProvider.id,
+      servicioId: selectedService.id,
+      userId: user?.id,
+      nombreSolicitante: baseForm.fullName,
+      whatsappSolicitante: baseForm.phone,
+      correoSolicitante: baseForm.email,
+      fechaSolicitada: `${selectedDate}T${baseForm.preferredTime}:00`,
+      notas: baseForm.notes,
+    };
+
+    try {
+      await requestAppointment(appointmentPayload);
+    } catch {
+      return;
+    }
+
+    const existingAppointments = JSON.parse(localStorage.getItem('appointments') ?? '[]') as LocalAppointment[];
+    const appointment: LocalAppointment = {
       id: `${Date.now()}-${Math.random().toString(16).slice(2)}`,
       providerId: selectedProvider.id,
-      providerName: selectedProvider.name,
+      providerName: selectedProvider.nombre_comercial,
       serviceId: selectedService.id,
       serviceName: selectedService.name,
       date: selectedDate,
@@ -245,20 +336,19 @@ export default function RequestAppointment(): React.JSX.Element {
       requesterPhone: baseForm.phone,
       requesterEmail: baseForm.email,
       notes: baseForm.notes,
-      customFields,
       requestedByUserId: user?.id ?? null,
       createdAt: new Date().toISOString(),
       status: 'pending'
     };
 
     const start = new Date(`${appointment.date}T${appointment.preferredTime}:00`);
-    const end = new Date(start.getTime() + selectedService.duration.value * 60 * 1000);
+    const end = new Date(start.getTime() + durationToMinutes(selectedService.duration) * 60 * 1000);
     const event: CalendarEvent = {
       id: `${Date.now()}-${Math.random().toString(16).slice(2)}`,
       appointmentId: appointment.id,
       title: `Cita: ${selectedService.name}`,
       description: [
-        `Proveedor: ${selectedProvider.name}`,
+        `Proveedor: ${selectedProvider.nombre_comercial}`,
         `Servicio: ${selectedService.name}`,
         `Solicitante: ${appointment.requesterName}`,
         `Teléfono: ${appointment.requesterPhone}`,
@@ -267,7 +357,7 @@ export default function RequestAppointment(): React.JSX.Element {
       ]
         .filter((line) => line !== '')
         .join('\n'),
-      location: `${selectedProvider.name}, ${selectedProvider.city}`,
+      location: `${selectedProvider.nombre_comercial}, ${selectedProvider.ciudad.name}`,
       start: start.toISOString(),
       end: end.toISOString(),
       providerId: selectedProvider.id,
@@ -281,6 +371,22 @@ export default function RequestAppointment(): React.JSX.Element {
     downloadIcsFile(event);
     navigate('/appointments');
   };
+
+  if (providerLoading) {
+    return (
+      <Container maxWidth="md" sx={{ py: { xs: 3, md: 6 }, display: 'flex', justifyContent: 'center' }}>
+        <CircularProgress />
+      </Container>
+    );
+  }
+
+  if (providerError) {
+    return (
+      <Container maxWidth="md" sx={{ py: { xs: 3, md: 6 } }}>
+        <Alert severity="error">{providerError}</Alert>
+      </Container>
+    );
+  }
 
   if (!selectedProvider) {
     return (
@@ -299,61 +405,47 @@ export default function RequestAppointment(): React.JSX.Element {
               Solicitar cita
             </Typography>
             <Typography variant="body1" color="text.secondary">
-              Flujo simple para web y móvil: proveedor, servicio, día y confirmación.
+              Agenda con {selectedProvider.nombre_comercial}: selecciona servicio, día y hora disponible.
             </Typography>
           </Box>
 
-          <Stack direction={{ xs: 'column', md: 'row' }} spacing={2}>
-            <TextField
-              select
-              label="Proveedor"
-              value={selectedProviderId}
-              onChange={(event) => {
-                setSelectedProviderId(event.target.value);
-                setSelectedServiceId('');
-                setCustomFields({});
-              }}
-              fullWidth
-            >
-              {providers.map((provider) => (
-                <MenuItem key={provider.id} value={provider.id}>
-                  {provider.name} · {provider.city}
-                </MenuItem>
-              ))}
-            </TextField>
+          <Chip
+            label={`Proveedor: ${selectedProvider.nombre_comercial} · ${selectedProvider.ciudad.name}, ${selectedProvider.estado.name}`}
+            sx={{ width: 'fit-content' }}
+          />
 
-            <TextField
-              select
-              label="Servicio"
-              value={selectedServiceId}
-              onChange={(event) => {
-                setSelectedServiceId(event.target.value);
-                setCustomFields({});
-              }}
-              fullWidth
-            >
-              {availableServices.map((service) => (
-                <MenuItem key={service.id} value={service.id}>
-                  {service.name}
-                </MenuItem>
-              ))}
-            </TextField>
-          </Stack>
+          <TextField
+            select
+            label="Servicio"
+            value={selectedServiceId}
+            onChange={(event) => {
+              setSelectedServiceId(event.target.value);
+            }}
+            fullWidth
+          >
+            {availableServices.map((service) => (
+              <MenuItem key={service.id} value={service.id}>
+                {service.name}
+              </MenuItem>
+            ))}
+          </TextField>
 
           <TextField
             label="Día"
             type="date"
             value={selectedDate}
-            onChange={(event) => setSelectedDate(event.target.value)}
+            onChange={(event) => handleDateChange(event.target.value)}
             InputLabelProps={{ shrink: true }}
             inputProps={{ min: new Date().toISOString().split('T')[0] }}
+            error={Boolean(dateError)}
+            helperText={dateError ?? 'Solo se permiten días disponibles en el horario del proveedor.'}
             fullWidth
           />
 
           {selectedService && (
             <Stack direction="row" spacing={1}>
-              <Chip size="small" color="primary" label={`Duración: ${selectedService.duration.text}`} />
-              <Chip size="small" label={`Precio: ${selectedService.price}`} />
+              <Chip size="small" color="primary" label={`Duración: ${selectedService.duration}`} />
+              <Chip size="small" label={`Precio: ${selectedService.precio}`} />
             </Stack>
           )}
 
@@ -366,7 +458,7 @@ export default function RequestAppointment(): React.JSX.Element {
           {selectedDate !== '' && selectedService && (
             <Box>
               <Typography variant="h6" gutterBottom>
-                Personaliza tu solicitud
+                Datos de tu solicitud
               </Typography>
 
               <Stack spacing={2}>
@@ -408,51 +500,6 @@ export default function RequestAppointment(): React.JSX.Element {
                   </TextField>
                 </Stack>
 
-                {selectedService.fields.map((field) => {
-                  if (field.type === 'select') {
-                    return (
-                      <TextField
-                        key={field.code}
-                        select
-                        label={field.label}
-                        value={customFields[field.code] ?? ''}
-                        onChange={handleCustomChange(field.code)}
-                        fullWidth
-                      >
-                        {(field.options ?? []).map((option) => (
-                          <MenuItem key={option} value={option}>
-                            {option}
-                          </MenuItem>
-                        ))}
-                      </TextField>
-                    );
-                  }
-
-                  if (field.type === 'textarea') {
-                    return (
-                      <TextField
-                        key={field.code}
-                        label={field.label}
-                        value={customFields[field.code] ?? ''}
-                        onChange={handleCustomChange(field.code)}
-                        multiline
-                        minRows={3}
-                        fullWidth
-                      />
-                    );
-                  }
-
-                  return (
-                    <TextField
-                      key={field.code}
-                      label={field.label}
-                      value={customFields[field.code] ?? ''}
-                      onChange={handleCustomChange(field.code)}
-                      fullWidth
-                    />
-                  );
-                })}
-
                 <TextField
                   label="Indicaciones adicionales"
                   value={baseForm.notes}
@@ -478,13 +525,18 @@ export default function RequestAppointment(): React.JSX.Element {
             <Button
               variant="contained"
               color="primary"
-              disabled={!canConfirmAppointment}
-              onClick={saveAppointment}
+              disabled={!canConfirmAppointment || isRequestingAppointment}
+              onClick={() => {
+                void saveAppointment();
+              }}
               fullWidth
             >
-              Confirmar cita
+              {isRequestingAppointment ? 'Enviando solicitud...' : 'Confirmar cita'}
             </Button>
           </Stack>
+
+          {requestError && <Alert severity="error">{requestError}</Alert>}
+          {requestSuccess && <Alert severity="success">Solicitud de cita enviada correctamente.</Alert>}
         </Stack>
       </Paper>
     </Container>

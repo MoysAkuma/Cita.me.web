@@ -1,30 +1,27 @@
 import {useState, useEffect, useCallback, useRef} from 'react';
 import {getProviders} from '../../services/ProviderService';
 import {FiltersFetch, ProviderProfile} from '../../data/providers';
+import { useAsyncStatus } from '../common/useAsyncStatus';
 
 export const useGetProviders = (page: number, limit: number, filters: FiltersFetch) => {
-    const [loading, setLoading] = useState(false);
-    const [error, setError] = useState<string | null>(null);
-    const [success, setSuccess] = useState(false);
+    const { loading, error, success, start, succeed, fail, finish } = useAsyncStatus();
     const [providers, setProviders] = useState<ProviderProfile[]>([]);
 
     const initialFiltersRef = useRef<FiltersFetch>(filters);
 
     const refetchProviders = useCallback(async (nextFilters?: FiltersFetch) => {
-        setLoading(true);
-        setError(null);
-        setSuccess(false);
+        start();
         try {
             const appliedFilters = nextFilters ?? initialFiltersRef.current;
             const data = await getProviders(page, limit, appliedFilters);
             setProviders(data);
-            setSuccess(true);
-        } catch (err: any) {
-            setError(err.message || 'Error fetching providers');
+            succeed();
+        } catch (err: unknown) {
+            fail(err, 'Error fetching providers');
         } finally {
-            setLoading(false);
+            finish();
         }
-    }, [page, limit]);
+    }, [page, limit, start, succeed, fail, finish]);
 
     useEffect(() => {
         void refetchProviders();

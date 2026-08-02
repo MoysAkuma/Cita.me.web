@@ -78,7 +78,7 @@ export default function Search(): React.JSX.Element {
                                         <Button component={Link} to={`/provider/${provider.id}`} variant="outlined" fullWidth>
                                             Ver perfil
                                         </Button>
-                                        <Button component={Link} to="/request-appointment" variant="contained" fullWidth>
+                                        <Button component={Link} to={`/request-appointment/${provider.id}`} variant="contained" fullWidth>
                                             Solicitar cita
                                         </Button>
                                     </Stack>

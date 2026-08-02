@@ -1,39 +1,35 @@
 import { useState, useEffect } from 'react';
 import { getProvider } from '../../services/ProviderService';
 import { ProviderProfile } from '../../data/providers';
+import { useAsyncStatus } from '../common/useAsyncStatus';
 
 export const useGetProvider = (providerId: string) => {
-    const [loading, setLoading] = useState(false);
-    const [error, setError] = useState<string | null>(null);
-    const [success, setSuccess] = useState(false);
+    const { loading, error, success, start, succeed, fail, finish, reset } = useAsyncStatus();
     const [provider, setProvider] = useState<ProviderProfile | null>(null);
 
     useEffect(() => {
         if (!providerId) {
             setProvider(null);
-            setSuccess(false);
-            setError('Provider id is required');
+            reset();
+            fail('Provider id is required', 'Provider id is required');
             return;
         }
 
         const fetchProvider = async () => {
-            setLoading(true);
-            setError(null);
-            setSuccess(false);
+            start();
             try {
                 const response = await getProvider(providerId);
                 setProvider(response);
-                setSuccess(true);
+                succeed();
             } catch (err: unknown) {
-                const message = err instanceof Error ? err.message : 'Error fetching provider';
-                setError(message);
+                fail(err, 'Error fetching provider');
             } finally {
-                setLoading(false);
+                finish();
             }
         };
 
         void fetchProvider();
-    }, [providerId]);
+    }, [providerId, start, succeed, fail, finish, reset]);
 
     return { loading, error, success, provider };
 };

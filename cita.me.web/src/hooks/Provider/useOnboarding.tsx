@@ -1,19 +1,17 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { createProvider } from '../../services/ProviderService';
+import { useAsyncStatus } from '../common/useAsyncStatus';
 
 const weekDayIds = [0, 1, 2, 3, 4, 5, 6];
 
 export const useOnboarding = (userId: string) => {
-    const [loading, setLoading] = useState(false);
-    const [error, setError] = useState<string | null>(null);
-    const [success, setSuccess] = useState(false);
+    const { loading, error, success, start, succeed, fail, finish } = useAsyncStatus();
     const [providerId, setProviderId] = useState<string | null>(null);
     const navigate = useNavigate();
 
     const onboard = async (input: any) => {
-        setLoading(true);
-        setError(null);
+        start();
         try {
             const restDays = Array.isArray(input?.dias_descanso) ? input.dias_descanso : [];
             const normalizedRestDays = restDays.map((day: number) => (day === 7 ? 0 : day));
@@ -34,7 +32,7 @@ export const useOnboarding = (userId: string) => {
             const id = response?.id;
 
             setProviderId(id ?? null);
-            setSuccess(true);
+            succeed();
 
             if (id) {
                 navigate(`/provider/${id}`);
@@ -42,10 +40,10 @@ export const useOnboarding = (userId: string) => {
             }
 
             navigate('/search');
-        } catch (err: any) {
-            setError(err.message || 'An error occurred');
+        } catch (err: unknown) {
+            fail(err, 'An error occurred');
         } finally {
-            setLoading(false);
+            finish();
         }
     };
 

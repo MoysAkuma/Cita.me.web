@@ -93,7 +93,7 @@ export default function Profile(): React.JSX.Element {
 						</Stack>
 					</Box>
 					<Stack spacing={1.5} style={{ minWidth: '180px' }}>
-						<Button variant="contained" color="primary" size="large" component={Link} to="/request-appointment">
+						<Button variant="contained" color="primary" size="large" component={Link} to={`/request-appointment/${provider.id}`}>
 							Solicitar cita
 						</Button>
 						<Button variant="outlined" color="primary" component={Link} to="/search">
@@ -200,7 +200,7 @@ export default function Profile(): React.JSX.Element {
 						color="primary"
 						fullWidth
 						component={Link}
-						to="/request-appointment"
+						to={`/request-appointment/${provider.id}`}
 						style={{ marginTop: '24px' }}
 					>
 						Reservar ahora
