@@ -1,20 +1,21 @@
 export type SolictudCitaForm = {
-    proveedorId: string;
-    servicioId: number;
-    sucursalId?: number;
-    userId?: string;
-    nombreSolicitante: string;
-    whatsappSolicitante: string;
-    correoSolicitante: string;
-    fechaSolicitada: string;
+    proveedor_id: string;
+    servicio_id: number;
+    fecha_solicitada: string;
+    hora_solicitada: string;
+    sucursal_id?: number;
+    user_id?: string;
+    nombre_solicitante?: string;
+    whatsapp_solicitante?: string;
+    correo_solicitante?: string;
     notas?: string;
 };
 
 export type ConfirmacionCitaForm = {
-    usuarioId: string;
-    proveedorId: string;
-    servicioId: string;
-    telefonoWhatsapp: string;
+    usuario_id: string;
+    proveedor_id: string;
+    servicio_id: number;
+    telefono_whatsapp: string;
 };
 
 type CronologiaCita = {
@@ -49,10 +50,10 @@ type SucursalInfo = {
 }
 export type Appointment = {
     id: string;
-    proveedor_id: ProveedorInfo;
-    usuario_id?: UsuarioInfo;
-    servicio_id: ServicioInfo;
-    sucursal_id?: SucursalInfo;
+    proveedor: ProveedorInfo;
+    usuario?: UsuarioInfo;
+    servicio: ServicioInfo;
+    sucursal?: SucursalInfo;
     nombre_solicitante: string;
     whatsapp_solicitante: string;
     correo_solicitante: string;

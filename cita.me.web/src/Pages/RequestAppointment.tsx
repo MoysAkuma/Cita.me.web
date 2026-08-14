@@ -158,6 +158,29 @@ type BaseFormData = {
   notes: string;
 };
 
+const buildUserFullName = (user: {
+  nombre: string;
+  segundo_nombre?: string;
+  apellido_paterno: string;
+  apellido_materno?: string;
+}): string => {
+  return [user.nombre, user.segundo_nombre, user.apellido_paterno, user.apellido_materno]
+    .filter((part) => typeof part === 'string' && part.trim() !== '')
+    .join(' ')
+    .trim();
+};
+
+const weekdayLabelByDay: Record<number, string> = {
+  0: 'Domingo',
+  1: 'Lunes',
+  2: 'Martes',
+  3: 'Miércoles',
+  4: 'Jueves',
+  5: 'Viernes',
+  6: 'Sábado',
+  7: 'Domingo'
+};
+
 export default function RequestAppointment(): React.JSX.Element {
   const { user } = useAuth();
   const navigate = useNavigate();
@@ -179,6 +202,55 @@ export default function RequestAppointment(): React.JSX.Element {
     preferredTime: '',
     notes: ''
   });
+
+  React.useEffect(() => {
+    if (!user) {
+      return;
+    }
+
+    const fullName = buildUserFullName(user);
+    const phone = user.telefono_whatsapp ?? user.telefono ?? '';
+    const email = user.correo ?? '';
+
+    setBaseForm((current) => ({
+      ...current,
+      fullName: current.fullName.trim() !== '' ? current.fullName : fullName,
+      phone: current.phone.trim() !== '' ? current.phone : phone,
+      email: current.email.trim() !== '' ? current.email : email,
+    }));
+  }, [user]);
+
+  const isLoggedIn = Boolean(user);
+
+  const resolvedRequesterName = (baseForm.fullName.trim() !== ''
+    ? baseForm.fullName
+    : user
+      ? buildUserFullName(user)
+      : '').trim();
+
+  const resolvedRequesterPhone = (baseForm.phone.trim() !== ''
+    ? baseForm.phone
+    : user
+      ? user.telefono_whatsapp ?? user.telefono ?? ''
+      : '').trim();
+
+  const resolvedRequesterEmail = (baseForm.email.trim() !== ''
+    ? baseForm.email
+    : user
+      ? user.correo ?? ''
+      : '').trim();
+
+  const availableWeekdayLabels = React.useMemo(() => {
+    if (!selectedProvider) {
+      return [];
+    }
+
+    const normalizedDays = Array.from(
+      new Set(selectedProvider.horario.map((item) => (item.dia_semana === 7 ? 0 : item.dia_semana)))
+    ).sort((left, right) => left - right);
+
+    return normalizedDays.map((day) => weekdayLabelByDay[day] ?? `Día ${day}`);
+  }, [selectedProvider]);
 
   const availableServices = selectedProvider?.servicios ?? [];
 
@@ -298,8 +370,8 @@ export default function RequestAppointment(): React.JSX.Element {
     selectedDate !== '' &&
     !isSelectedDateOnDayOff &&
     baseForm.preferredTime.trim() !== '' &&
-    baseForm.fullName.trim() !== '' &&
-    baseForm.phone.trim() !== '';
+    resolvedRequesterName !== '' &&
+    resolvedRequesterPhone !== '';
 
   const saveAppointment = async () => {
     if (!selectedProvider || !selectedService || !canConfirmAppointment) {
@@ -310,9 +382,9 @@ export default function RequestAppointment(): React.JSX.Element {
       proveedorId: selectedProvider.id,
       servicioId: selectedService.id,
       userId: user?.id,
-      nombreSolicitante: baseForm.fullName,
-      whatsappSolicitante: baseForm.phone,
-      correoSolicitante: baseForm.email,
+      nombreSolicitante: resolvedRequesterName,
+      whatsappSolicitante: resolvedRequesterPhone,
+      correoSolicitante: resolvedRequesterEmail,
       fechaSolicitada: `${selectedDate}T${baseForm.preferredTime}:00`,
       notas: baseForm.notes,
     };
@@ -332,9 +404,9 @@ export default function RequestAppointment(): React.JSX.Element {
       serviceName: selectedService.name,
       date: selectedDate,
       preferredTime: baseForm.preferredTime,
-      requesterName: baseForm.fullName,
-      requesterPhone: baseForm.phone,
-      requesterEmail: baseForm.email,
+      requesterName: resolvedRequesterName,
+      requesterPhone: resolvedRequesterPhone,
+      requesterEmail: resolvedRequesterEmail,
       notes: baseForm.notes,
       requestedByUserId: user?.id ?? null,
       createdAt: new Date().toISOString(),
@@ -442,6 +514,14 @@ export default function RequestAppointment(): React.JSX.Element {
             fullWidth
           />
 
+          {availableWeekdayLabels.length > 0 && (
+            <Stack direction="row" spacing={1} useFlexGap flexWrap="wrap">
+              {availableWeekdayLabels.map((dayLabel) => (
+                <Chip key={dayLabel} size="small" variant="outlined" label={dayLabel} />
+              ))}
+            </Stack>
+          )}
+
           {selectedService && (
             <Stack direction="row" spacing={1}>
               <Chip size="small" color="primary" label={`Duración: ${selectedService.duration}`} />
@@ -462,28 +542,38 @@ export default function RequestAppointment(): React.JSX.Element {
               </Typography>
 
               <Stack spacing={2}>
-                <Stack direction={{ xs: 'column', md: 'row' }} spacing={2}>
-                  <TextField
-                    label="Nombre completo"
-                    value={baseForm.fullName}
-                    onChange={handleBaseChange('fullName')}
-                    fullWidth
-                  />
-                  <TextField
-                    label="Teléfono"
-                    value={baseForm.phone}
-                    onChange={handleBaseChange('phone')}
-                    fullWidth
-                  />
-                </Stack>
+                {!isLoggedIn && (
+                  <Stack direction={{ xs: 'column', md: 'row' }} spacing={2}>
+                    <TextField
+                      label="Nombre completo"
+                      value={baseForm.fullName}
+                      onChange={handleBaseChange('fullName')}
+                      fullWidth
+                    />
+                    <TextField
+                      label="Teléfono"
+                      value={baseForm.phone}
+                      onChange={handleBaseChange('phone')}
+                      fullWidth
+                    />
+                  </Stack>
+                )}
+
+                {isLoggedIn && (resolvedRequesterName === '' || resolvedRequesterPhone === '') && (
+                  <Alert severity="warning">
+                    Completa tu nombre y teléfono en tu perfil para poder confirmar la cita.
+                  </Alert>
+                )}
 
                 <Stack direction={{ xs: 'column', md: 'row' }} spacing={2}>
-                  <TextField
-                    label="Email (opcional)"
-                    value={baseForm.email}
-                    onChange={handleBaseChange('email')}
-                    fullWidth
-                  />
+                  {!isLoggedIn && (
+                    <TextField
+                      label="Email (opcional)"
+                      value={baseForm.email}
+                      onChange={handleBaseChange('email')}
+                      fullWidth
+                    />
+                  )}
                   <TextField
                     select
                     label="Hora disponible"
